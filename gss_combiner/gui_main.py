@@ -373,9 +373,9 @@ class DeviceApp(tk.Tk):
         # Default to MIDAS BASE
         self.notebook.select(home_tab)
 
-        self._build_poop(home_tab)
+        self._build_poop(home_tab, "HOME")
         self._build_connect_tab(connect_tab)
-        self._build_poop(config_tab)
+        self._build_poop(config_tab, "CONFIG")
         self._build_poop(test_tab, "TEST")
         self._build_poop(telem_tab, "TELEM")
         self._build_poop(export_tab, "EXPORT")
@@ -899,5 +899,4 @@ if __name__ == "__main__":
     app = DeviceApp()
     app.after(1000, app.update_devices)
     app.after(50, app.update_stdouts)
-    app.after(1000, app._gss_update_uptime)
     app.mainloop()
