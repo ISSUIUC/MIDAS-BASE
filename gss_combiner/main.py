@@ -7,6 +7,7 @@
 # Zyun Lam (2027)
 # Michael Karpov (2027)
 # Surag Nuthulapaty (2027)
+# Ali Muhammad (2028)
 
 # USAGE:
 # py ./main.py [options]

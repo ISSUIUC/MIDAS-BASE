@@ -9,6 +9,7 @@ import serial
 from serial.tools.list_ports import comports
 import time
 import json
+import datetime
 
 import threading
 import sys
@@ -93,7 +94,7 @@ class FeatherSubprocess:
     def check_type(self):
         print("Check type invoked on ", self.__port)
         if self.__is_active:
-            return # This will be taken over by another process already
+            return # This will be taken over by another process already 
         
         port_taken, self.__serial = is_port_taken(self.__port)
         if port_taken:
@@ -239,6 +240,15 @@ class DeviceApp(tk.Tk):
         self.geometry("800x550")
         self.selected_device = None
         self.windows = []
+
+        # MIDAS BASE state
+        self.gss_running = False
+        self.gss_uptime_start = None
+        self.gss_process = None  # TODO: hold actual server process
+
+        # CONFIG state — which device is selected for config
+        self.cfg_selected_port = None
+
         self.create_widgets()
 
     def update_devices(self):
@@ -341,8 +351,141 @@ class DeviceApp(tk.Tk):
 
 
     def create_widgets(self):
+        # Menu Bar
+        self.notebook = ttk.Notebook(self)
+        self.notebook.pack(fill="both", expand=True, padx=5, pady=5)
+
+        # Add tabs here
+        home_tab = ttk.Frame(self.notebook)
+        config_tab = ttk.Frame(self.notebook)
+        test_tab = ttk.Frame(self.notebook)
+        connect_tab = ttk.Frame(self.notebook)
+        telem_tab = ttk.Frame(self.notebook)
+        export_tab = ttk.Frame(self.notebook)
+
+        self.notebook.add(home_tab, text="MIDAS BASE")
+        self.notebook.add(config_tab, text="CONFIG")
+        self.notebook.add(test_tab, text="TEST")
+        self.notebook.add(connect_tab, text="CONNECT ")
+        self.notebook.add(telem_tab, text="TELEM")
+        self.notebook.add(export_tab, text="EXPORT")
+
+        # Default to MIDAS BASE
+        self.notebook.select(home_tab)
+
+        self._build_poop(home_tab)
+        self._build_connect_tab(connect_tab)
+        self._build_poop(config_tab)
+        self._build_poop(test_tab, "TEST")
+        self._build_poop(telem_tab, "TELEM")
+        self._build_poop(export_tab, "EXPORT")
+
+    # Temporary
+    def _build_poop(self, parent, name):
+        ttk.Label(parent, text=f"{name} Temporary", font=("Helvetica", 14)).pack(expand=True)
+
+    # def _build_home_tab(self, parent):
+    #     # ── Top: Big start / status area ──
+    #     top_frame = ttk.Frame(parent)
+    #     top_frame.pack(fill="x", padx=15, pady=(15, 5))
+
+    #     self.gss_start_btn = ttk.Button(top_frame, text="Start Groundstation",
+    #                                      command=self._gss_toggle_server)
+    #     self.gss_start_btn.pack(side="left", ipadx=20, ipady=10)
+
+    #     self.gss_status_label = ttk.Label(top_frame, text="", font=("Helvetica", 12, "bold"))
+    #     self.gss_status_label.pack(side="left", padx=20)
+
+    #     # ── Info row: clients + network ──
+    #     info_frame = ttk.Frame(parent)
+    #     info_frame.pack(fill="x", padx=15, pady=5)
+
+    #     self.gss_clients_label = ttk.Label(info_frame, text="Clients: 0")
+    #     self.gss_clients_label.pack(anchor="w")
+
+    #     self.gss_network_label = ttk.Label(info_frame, text='Network: ""')
+    #     self.gss_network_label.pack(anchor="w")
+
+    #     ttk.Separator(parent, orient="horizontal").pack(fill="x", padx=15, pady=10)
+
+    #     # ── Connected devices summary ──
+    #     dev_frame = ttk.LabelFrame(parent, text="Connected Telem Devices")
+    #     dev_frame.pack(fill="both", expand=True, padx=15, pady=(0, 5))
+
+    #     dev_cols = ("Port", "Type", "Role", "Status")
+    #     self.gss_dev_tree = ttk.Treeview(dev_frame, columns=dev_cols, show="headings", height=6)
+    #     for col in dev_cols:
+    #         self.gss_dev_tree.heading(col, text=col)
+    #         self.gss_dev_tree.column(col, width=140)
+    #     self.gss_dev_tree.pack(fill="both", expand=True, padx=5, pady=5)
+
+    #     # ── Bottom stats ──
+    #     stats_frame = ttk.Frame(parent)
+    #     stats_frame.pack(fill="x", padx=15, pady=(0, 10))
+
+    #     self.gss_boards_label = ttk.Label(stats_frame, text="Boards: 0")
+    #     self.gss_boards_label.pack(side="left", padx=(0, 20))
+
+    #     self.gss_laptops_label = ttk.Label(stats_frame, text="Laptops: 0")
+    #     self.gss_laptops_label.pack(side="left")
+
+    #     self.gss_uptime_label = ttk.Label(stats_frame, text="Uptime: --:--:--")
+    #     self.gss_uptime_label.pack(side="right")
+
+    # def _gss_toggle_server(self):
+    #     if self.gss_running:
+    #         # TODO: actually stop server process
+    #         self.gss_running = False
+    #         self.gss_uptime_start = None
+    #         self.gss_start_btn.config(text="Start Groundstation")
+    #         self.gss_status_label.config(text="", foreground="black")
+    #     else:
+    #         # TODO: actually start server process
+    #         self.gss_running = True
+    #         self.gss_uptime_start = datetime.datetime.now()
+    #         self.gss_start_btn.config(text="Stop Groundstation")
+    #         self.gss_status_label.config(text="GNDSTN RUNNING", foreground="green")
+
+    # def _gss_update_uptime(self):
+    #     if self.gss_running and self.gss_uptime_start:
+    #         delta = datetime.datetime.now() - self.gss_uptime_start
+    #         h, rem = divmod(int(delta.total_seconds()), 3600)
+    #         m, s = divmod(rem, 60)
+    #         self.gss_uptime_label.config(text=f"Uptime: {h:02d}:{m:02d}:{s:02d}")
+    #     else:
+    #         self.gss_uptime_label.config(text="Uptime: --:--:--")
+
+    #     # Also update device counts from the global devices list
+    #     online = [d for d in devices if d.is_online()]
+    #     board_count = sum(1 for d in online if d.type in ("FEATHER DUO", "FEATHER M0"))
+    #     laptop_count = sum(1 for d in online if d.type not in ("FEATHER DUO", "FEATHER M0", "UNKNOWN"))
+    #     self.gss_boards_label.config(text=f"Boards: {board_count}")
+    #     self.gss_laptops_label.config(text=f"Laptops: {laptop_count}")
+    #     self.gss_clients_label.config(text=f"Clients: {len(online)}")
+
+    #     if self.gss_running:
+    #         ip = "localhost"  # TODO: pull from actual server
+    #         self.gss_network_label.config(text=f'Network: "mqtt://{ip}:1884"')
+    #     else:
+    #         self.gss_network_label.config(text='Network: ""')
+
+    #     # Refresh the device tree
+    #     for item in self.gss_dev_tree.get_children():
+    #         self.gss_dev_tree.delete(item)
+    #     for d in devices:
+    #         dd = d.to_dict()
+    #         if dd["status"].upper() not in ("NONE", "UNKNOWN"):
+    #             role = d.stage_sel.upper() if d.stage_sel else "—"
+    #             self.gss_dev_tree.insert("", "end", values=(dd["port"], dd["name"], role, dd["status"]))
+
+    #     self.after(1000, self._gss_update_uptime)
+
+    # Original UI here
+    def _build_connect_tab(self, parent):
+        """This is the original create_widgets content, now inside the CONNECT tab."""
+
         # Main layout
-        main_frame = ttk.Frame(self)
+        main_frame = ttk.Frame(parent)
         main_frame.pack(fill="both", expand=True, padx=10, pady=10)
 
         # Left side: device list
@@ -447,6 +590,151 @@ class DeviceApp(tk.Tk):
             self.connect_btn.config(state="disabled")
             self.do_log_checkbox.config(state="disabled")
         self.bind("<Escape>", deselect)
+
+    # ──────────────────────────────────────────────────────────
+    #  CONFIG Tab
+    # ──────────────────────────────────────────────────────────
+
+    # def _build_config_tab(self, parent):
+    #     """Sketch rows 3-4: Config panel that adapts to Feather Duo vs MIDAS."""
+
+    #     # ── Top: device selector ──
+    #     sel_frame = ttk.Frame(parent)
+    #     sel_frame.pack(fill="x", padx=15, pady=(10, 5))
+
+    #     ttk.Label(sel_frame, text="Name:").pack(side="left")
+    #     self.cfg_name_entry = ttk.Entry(sel_frame, width=15)
+    #     self.cfg_name_entry.pack(side="left", padx=(5, 15))
+
+    #     ttk.Label(sel_frame, text="Type:").pack(side="left")
+    #     self.cfg_type_label = ttk.Label(sel_frame, text="—")
+    #     self.cfg_type_label.pack(side="left", padx=(5, 15))
+
+    #     # MIDAS channel selector (right side)
+    #     self.cfg_midas_frame = ttk.Frame(sel_frame)
+    #     self.cfg_midas_frame.pack(side="right")
+    #     ttk.Label(self.cfg_midas_frame, text="MIDAS: Channel:").pack(side="left")
+    #     self.cfg_midas_channel = ttk.Combobox(self.cfg_midas_frame, values=["A", "B", "C", "D"], width=4, state="readonly")
+    #     self.cfg_midas_channel.pack(side="left", padx=5)
+
+    #     ttk.Separator(parent, orient="horizontal").pack(fill="x", padx=15, pady=5)
+
+    #     # ── Content: two-panel layout ──
+    #     # Left = Feather Duo fields, Right = MIDAS fields
+    #     # Both are always built; we show/hide based on device type
+
+    #     content = ttk.Frame(parent)
+    #     content.pack(fill="both", expand=True, padx=15, pady=5)
+
+    #     # ── LEFT: Feather Duo config ──
+    #     self.cfg_fduo_frame = ttk.LabelFrame(content, text="Feather Duo Config")
+    #     self.cfg_fduo_frame.pack(side="left", fill="both", expand=True, padx=(0, 5))
+
+    #     fduo_inner = ttk.Frame(self.cfg_fduo_frame)
+    #     fduo_inner.pack(fill="both", expand=True, padx=10, pady=10)
+
+    #     # Frequency fields
+    #     ttk.Label(fduo_inner, text="Freq:", font=("Helvetica", 10, "bold")).grid(row=0, column=0, sticky="w", pady=3)
+
+    #     ttk.Label(fduo_inner, text="R0").grid(row=1, column=0, sticky="w", padx=(10, 5))
+    #     self.cfg_fduo_r0_freq = ttk.Entry(fduo_inner, width=10)
+    #     self.cfg_fduo_r0_freq.grid(row=1, column=1, sticky="w", padx=5)
+    #     ttk.Label(fduo_inner, text=":").grid(row=1, column=2)
+    #     self.cfg_fduo_r0_stage = ttk.Combobox(fduo_inner, values=["SUS", "BOOS"], width=6, state="readonly")
+    #     self.cfg_fduo_r0_stage.grid(row=1, column=3, padx=5)
+
+    #     ttk.Label(fduo_inner, text="R1").grid(row=2, column=0, sticky="w", padx=(10, 5))
+    #     self.cfg_fduo_r1_freq = ttk.Entry(fduo_inner, width=10)
+    #     self.cfg_fduo_r1_freq.grid(row=2, column=1, sticky="w", padx=5)
+    #     ttk.Label(fduo_inner, text=":").grid(row=2, column=2)
+    #     self.cfg_fduo_r1_stage = ttk.Combobox(fduo_inner, values=["SUS", "BOOS"], width=6, state="readonly")
+    #     self.cfg_fduo_r1_stage.grid(row=2, column=3, padx=5)
+
+    #     # ── RIGHT: MIDAS config ──
+    #     self.cfg_midas_config_frame = ttk.LabelFrame(content, text="MIDAS Config")
+    #     self.cfg_midas_config_frame.pack(side="left", fill="both", expand=True, padx=(5, 0))
+
+    #     midas_inner = ttk.Frame(self.cfg_midas_config_frame)
+    #     midas_inner.pack(fill="both", expand=True, padx=10, pady=10)
+
+    #     # Pyro States
+    #     ttk.Label(midas_inner, text="Pyro State:", font=("Helvetica", 10, "bold")).grid(row=0, column=0, sticky="w", columnspan=2, pady=(0, 3))
+
+    #     self.cfg_pyro_entries = {}
+    #     pyro_labels = ["Gn...", "FSM trg...", "Vmn..."]
+    #     for i, lbl in enumerate(pyro_labels):
+    #         ttk.Label(midas_inner, text=lbl).grid(row=1 + i, column=0, sticky="w", padx=(10, 5), pady=2)
+    #         entry = ttk.Entry(midas_inner, width=18)
+    #         entry.grid(row=1 + i, column=1, sticky="w", padx=5, pady=2)
+    #         self.cfg_pyro_entries[lbl] = entry
+
+    #     ttk.Separator(midas_inner, orient="horizontal").grid(row=4, column=0, columnspan=4, sticky="ew", pady=8)
+
+    #     # Thresholds
+    #     ttk.Label(midas_inner, text="Thresholds:", font=("Helvetica", 10, "bold")).grid(row=5, column=0, sticky="w", columnspan=2, pady=(0, 3))
+
+    #     self.cfg_load_thresh_btn = ttk.Button(midas_inner, text="Load curr thresholds", command=self._cfg_load_thresholds)
+    #     self.cfg_load_thresh_btn.grid(row=5, column=1, columnspan=2, sticky="e", padx=5)
+
+    #     ttk.Label(midas_inner, text="T-Name").grid(row=6, column=0, sticky="w", padx=(10, 5), pady=2)
+    #     self.cfg_thresh_name = ttk.Entry(midas_inner, width=14)
+    #     self.cfg_thresh_name.grid(row=6, column=1, padx=5, pady=2)
+
+    #     ttk.Label(midas_inner, text="Unit").grid(row=6, column=2, padx=5)
+    #     self.cfg_thresh_unit = ttk.Entry(midas_inner, width=8)
+    #     self.cfg_thresh_unit.grid(row=6, column=3, padx=5, pady=2)
+
+    #     ttk.Separator(midas_inner, orient="horizontal").grid(row=7, column=0, columnspan=4, sticky="ew", pady=8)
+
+    #     # FSM controls
+    #     ttk.Label(midas_inner, text="FSM:", font=("Helvetica", 10, "bold")).grid(row=8, column=0, sticky="w", pady=(0, 3))
+
+    #     fsm_btn_frame = ttk.Frame(midas_inner)
+    #     fsm_btn_frame.grid(row=9, column=0, columnspan=4, sticky="w", padx=10)
+
+    #     self.cfg_fsm_version_btn = ttk.Button(fsm_btn_frame, text="FSM Version", command=lambda: None)  # TODO
+    #     self.cfg_fsm_version_btn.pack(side="left", padx=2)
+
+    #     self.cfg_fsm_crc_btn = ttk.Button(fsm_btn_frame, text="FSM CRC", command=lambda: None)  # TODO
+    #     self.cfg_fsm_crc_btn.pack(side="left", padx=2)
+
+    #     self.cfg_fsm_calc_btn = ttk.Button(fsm_btn_frame, text="FSM Calculate", command=lambda: None)  # TODO
+    #     self.cfg_fsm_calc_btn.pack(side="left", padx=2)
+
+    #     self.cfg_fsm_commit_btn = ttk.Button(fsm_btn_frame, text="FSM Commit", command=lambda: None)  # TODO
+    #     self.cfg_fsm_commit_btn.pack(side="left", padx=2)
+
+    #     # ── Bottom bar: pre-defined configs + save ──
+    #     bottom_frame = ttk.Frame(parent)
+    #     bottom_frame.pack(fill="x", padx=15, pady=(5, 10))
+
+    #     ttk.Label(bottom_frame, text="Pre-def:").pack(side="left")
+
+    #     self.cfg_predef_ss = ttk.Button(bottom_frame, text="SS", command=lambda: self._cfg_load_predef("SS"))
+    #     self.cfg_predef_ss.pack(side="left", padx=3)
+
+    #     self.cfg_predef_tsb = ttk.Button(bottom_frame, text="TSB", command=lambda: self._cfg_load_predef("TSB"))
+    #     self.cfg_predef_tsb.pack(side="left", padx=3)
+
+    #     self.cfg_predef_tss = ttk.Button(bottom_frame, text="TSS", command=lambda: self._cfg_load_predef("TSS"))
+    #     self.cfg_predef_tss.pack(side="left", padx=3)
+
+    #     self.cfg_save_btn = ttk.Button(bottom_frame, text="Save", command=self._cfg_save)
+    #     self.cfg_save_btn.pack(side="right", padx=5)
+
+    # # ── CONFIG helpers (all TODO for backend) ──
+
+    # def _cfg_load_thresholds(self):
+    #     """TODO: Load current thresholds from connected MIDAS board."""
+    #     print("[CONFIG] Load thresholds clicked")
+
+    # def _cfg_load_predef(self, preset_name):
+    #     """TODO: Load a pre-defined FSM config (SS, TSB, TSS)."""
+    #     print(f"[CONFIG] Loading preset: {preset_name}")
+
+    # def _cfg_save(self):
+    #     """TODO: Save / flash current config to the selected board."""
+    #     print("[CONFIG] Save clicked")
 
     def on_select(self, event):
         selected = self.tree.selection()
@@ -611,4 +899,5 @@ if __name__ == "__main__":
     app = DeviceApp()
     app.after(1000, app.update_devices)
     app.after(50, app.update_stdouts)
+    app.after(1000, app._gss_update_uptime)
     app.mainloop()
