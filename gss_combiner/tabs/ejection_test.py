@@ -30,9 +30,38 @@ def _build_ejection_test_tab(self, parent, name):
     line = ttk.Label(parent, text="--------------------------------------------------------------------------------------------------------------")
     line.place(x = 0, y = 120)
     warning.place(x = 20, y = 10)
-    force_safe_button = ttk.Button(parent, text="Force Safe", padding=(20, 20), command=lambda: print("Force Safe button clicked!"))
+    force_safe_button = ttk.Button(parent, text="Force Safe", padding=(20, 20), command=force_safe)
     force_safe_button.place(x=20,y=250)
 
-    pyro_test_button = ttk.Button(parent, text="Pyro Test", padding=(20, 20), command=lambda: print("Pyro Test button clicked!"))
+    pyro_test_button = ttk.Button(parent, text="Pyro Test", padding=(20, 20), command=pyro_test)
     pyro_test_button.place(x=150,y=250)
 
+    fire_A_button = ttk.Button(parent, text="Fire A", padding=(20, 20), command=fire_A)
+    fire_A_button.place(x=310,y=250)
+
+    fire_B_button = ttk.Button(parent, text="Fire B", padding=(20, 20), command=fire_B)
+    fire_B_button.place(x=430,y=250)
+    
+    fire_C_button = ttk.Button(parent, text="Fire C", padding=(20, 20), command=fire_C)
+    fire_C_button.place(x=550,y=250)
+
+    fire_D_button = ttk.Button(parent, text="Fire D", padding=(20, 20), command=fire_D)
+    fire_D_button.place(x=670,y=250)
+
+def force_safe():
+    print("force safe")
+
+def pyro_test():
+    print("pyro test")
+
+def fire_A():
+    print("FIRE A")
+
+def fire_B():
+    print("FIRE B")
+
+def fire_C():
+    print("FIRE C")
+
+def fire_D():
+    print("FIRE D")
