@@ -19,6 +19,7 @@ from tabs.connect import _build_connect_tab
 from tabs.ejection_test import _build_ejection_test_tab
 from tabs.telem import _build_telem_tab
 from tabs.export import _build_export_tab
+from tabs.home import _build_home_tab
 
 def get_feather_duo_ports():
     """
@@ -381,10 +382,11 @@ class DeviceApp(tk.Tk):
         # Default to MIDAS BASE
         self.notebook.select(home_tab)
 
-        self._build_poop(home_tab, "HOME")
+        
 
         _build_connect_tab(self, connect_tab, devices)
         _build_config_tab(self, config_tab)
+        _build_home_tab(self, home_tab, "HOME")
         
         _build_ejection_test_tab(self, test_tab, "TEST")
         _build_telem_tab(self, telem_tab, "TELEM")
