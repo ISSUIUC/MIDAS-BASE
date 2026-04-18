@@ -14,7 +14,11 @@ import datetime
 import threading
 import sys
 import queue
-
+from tabs.config import _build_config_tab
+from tabs.connect import _build_connect_tab
+from tabs.ejection_test import _build_ejection_test_tab
+from tabs.telem import _build_telem_tab
+from tabs.export import _build_export_tab
 
 def get_feather_duo_ports():
     """
@@ -123,6 +127,13 @@ class FeatherSubprocess:
                     
                     if ident_value == "FEATHER_DUO":
                         self.type = "FEATHER DUO"
+                        self.stat = "OFFLINE"
+                        self.__serial.close()
+                        self.__serial = None
+                        return
+                    
+                    if ident_value == "MIDAS_MINI":
+                        self.type = "MIDAS Mini"
                         self.stat = "OFFLINE"
                         self.__serial.close()
                         self.__serial = None
@@ -236,7 +247,7 @@ def run_standalone_worker(pipe_conn, ip, port, stage_sel, do_log):
 class DeviceApp(tk.Tk):
     def __init__(self):
         super().__init__()
-        self.title("MIDAS Base")
+        self.title("Home")
         self.geometry("800x550")
         self.selected_device = None
         self.windows = []
@@ -347,9 +358,6 @@ class DeviceApp(tk.Tk):
         online_count = sum(1 for d in devices if d.to_dict()["status"].lower() == "online")
         self.online_label.config(text=f"Online: {online_count}")
 
-        
-
-
     def create_widgets(self):
         # Menu Bar
         self.notebook = ttk.Notebook(self)
@@ -363,9 +371,9 @@ class DeviceApp(tk.Tk):
         telem_tab = ttk.Frame(self.notebook)
         export_tab = ttk.Frame(self.notebook)
 
-        self.notebook.add(home_tab, text="MIDAS BASE")
+        self.notebook.add(home_tab, text="HOME")
         self.notebook.add(config_tab, text="CONFIG")
-        self.notebook.add(test_tab, text="TEST")
+        self.notebook.add(test_tab, text="EJECTION_TEST")
         self.notebook.add(connect_tab, text="CONNECT ")
         self.notebook.add(telem_tab, text="TELEM")
         self.notebook.add(export_tab, text="EXPORT")
@@ -374,223 +382,19 @@ class DeviceApp(tk.Tk):
         self.notebook.select(home_tab)
 
         self._build_poop(home_tab, "HOME")
-        self._build_connect_tab(connect_tab)
-        self._build_poop(config_tab, "CONFIG")
-        self._build_poop(test_tab, "TEST")
-        self._build_poop(telem_tab, "TELEM")
-        self._build_poop(export_tab, "EXPORT")
 
-    # Temporary
+        _build_connect_tab(self, connect_tab, devices)
+        _build_config_tab(self, config_tab)
+        
+        _build_ejection_test_tab(self, test_tab, "TEST")
+        _build_telem_tab(self, telem_tab, "TELEM")
+        _build_export_tab(self, export_tab, "EXPORT")
+
     def _build_poop(self, parent, name):
         ttk.Label(parent, text=f"{name} Temporary", font=("Helvetica", 14)).pack(expand=True)
 
-    # def _build_home_tab(self, parent):
-    #     # ── Top: Big start / status area ──
-    #     top_frame = ttk.Frame(parent)
-    #     top_frame.pack(fill="x", padx=15, pady=(15, 5))
-
-    #     self.gss_start_btn = ttk.Button(top_frame, text="Start Groundstation",
-    #                                      command=self._gss_toggle_server)
-    #     self.gss_start_btn.pack(side="left", ipadx=20, ipady=10)
-
-    #     self.gss_status_label = ttk.Label(top_frame, text="", font=("Helvetica", 12, "bold"))
-    #     self.gss_status_label.pack(side="left", padx=20)
-
-    #     # ── Info row: clients + network ──
-    #     info_frame = ttk.Frame(parent)
-    #     info_frame.pack(fill="x", padx=15, pady=5)
-
-    #     self.gss_clients_label = ttk.Label(info_frame, text="Clients: 0")
-    #     self.gss_clients_label.pack(anchor="w")
-
-    #     self.gss_network_label = ttk.Label(info_frame, text='Network: ""')
-    #     self.gss_network_label.pack(anchor="w")
-
-    #     ttk.Separator(parent, orient="horizontal").pack(fill="x", padx=15, pady=10)
-
-    #     # ── Connected devices summary ──
-    #     dev_frame = ttk.LabelFrame(parent, text="Connected Telem Devices")
-    #     dev_frame.pack(fill="both", expand=True, padx=15, pady=(0, 5))
-
-    #     dev_cols = ("Port", "Type", "Role", "Status")
-    #     self.gss_dev_tree = ttk.Treeview(dev_frame, columns=dev_cols, show="headings", height=6)
-    #     for col in dev_cols:
-    #         self.gss_dev_tree.heading(col, text=col)
-    #         self.gss_dev_tree.column(col, width=140)
-    #     self.gss_dev_tree.pack(fill="both", expand=True, padx=5, pady=5)
-
-    #     # ── Bottom stats ──
-    #     stats_frame = ttk.Frame(parent)
-    #     stats_frame.pack(fill="x", padx=15, pady=(0, 10))
-
-    #     self.gss_boards_label = ttk.Label(stats_frame, text="Boards: 0")
-    #     self.gss_boards_label.pack(side="left", padx=(0, 20))
-
-    #     self.gss_laptops_label = ttk.Label(stats_frame, text="Laptops: 0")
-    #     self.gss_laptops_label.pack(side="left")
-
-    #     self.gss_uptime_label = ttk.Label(stats_frame, text="Uptime: --:--:--")
-    #     self.gss_uptime_label.pack(side="right")
-
-    # def _gss_toggle_server(self):
-    #     if self.gss_running:
-    #         # TODO: actually stop server process
-    #         self.gss_running = False
-    #         self.gss_uptime_start = None
-    #         self.gss_start_btn.config(text="Start Groundstation")
-    #         self.gss_status_label.config(text="", foreground="black")
-    #     else:
-    #         # TODO: actually start server process
-    #         self.gss_running = True
-    #         self.gss_uptime_start = datetime.datetime.now()
-    #         self.gss_start_btn.config(text="Stop Groundstation")
-    #         self.gss_status_label.config(text="GNDSTN RUNNING", foreground="green")
-
-    # def _gss_update_uptime(self):
-    #     if self.gss_running and self.gss_uptime_start:
-    #         delta = datetime.datetime.now() - self.gss_uptime_start
-    #         h, rem = divmod(int(delta.total_seconds()), 3600)
-    #         m, s = divmod(rem, 60)
-    #         self.gss_uptime_label.config(text=f"Uptime: {h:02d}:{m:02d}:{s:02d}")
-    #     else:
-    #         self.gss_uptime_label.config(text="Uptime: --:--:--")
-
-    #     # Also update device counts from the global devices list
-    #     online = [d for d in devices if d.is_online()]
-    #     board_count = sum(1 for d in online if d.type in ("FEATHER DUO", "FEATHER M0"))
-    #     laptop_count = sum(1 for d in online if d.type not in ("FEATHER DUO", "FEATHER M0", "UNKNOWN"))
-    #     self.gss_boards_label.config(text=f"Boards: {board_count}")
-    #     self.gss_laptops_label.config(text=f"Laptops: {laptop_count}")
-    #     self.gss_clients_label.config(text=f"Clients: {len(online)}")
-
-    #     if self.gss_running:
-    #         ip = "localhost"  # TODO: pull from actual server
-    #         self.gss_network_label.config(text=f'Network: "mqtt://{ip}:1884"')
-    #     else:
-    #         self.gss_network_label.config(text='Network: ""')
-
-    #     # Refresh the device tree
-    #     for item in self.gss_dev_tree.get_children():
-    #         self.gss_dev_tree.delete(item)
-    #     for d in devices:
-    #         dd = d.to_dict()
-    #         if dd["status"].upper() not in ("NONE", "UNKNOWN"):
-    #             role = d.stage_sel.upper() if d.stage_sel else "—"
-    #             self.gss_dev_tree.insert("", "end", values=(dd["port"], dd["name"], role, dd["status"]))
-
-    #     self.after(1000, self._gss_update_uptime)
-
-    # Original UI here
-    def _build_connect_tab(self, parent):
-        """This is the original create_widgets content, now inside the CONNECT tab."""
-
-        # Main layout
-        main_frame = ttk.Frame(parent)
-        main_frame.pack(fill="both", expand=True, padx=10, pady=10)
-
-        # Left side: device list
-        list_frame = ttk.Frame(main_frame)
-        list_frame.pack(side="left", fill="both", expand=True)
-
-        title = ttk.Label(list_frame, text="COM List", font=("Helvetica", 14))
-        title.pack(pady=5)
-
-        columns = ("Device Port", "Type", "Status", "Streaming to", "Meta")
-        self.tree = ttk.Treeview(list_frame, columns=columns, show="headings")
-        self.tree.tag_configure("disabled", foreground="gray")
-        
-        for col in columns:
-            self.tree.heading(col, text=col)
-            self.tree.column(col, width=120)
-
-        for _device in devices:
-            device = _device.to_dict()
-
-            tags = ("disabled",) if device["status"].upper() == "NONE" or device["status"].upper() == "IDENTIFYING..." else ()
-            self.tree.insert("", "end", values=(device["port"], device["name"], device["status"], device["server"], device["meta"]), tags=tags)
-
-        self.tree.bind("<<TreeviewSelect>>", self.on_select)
-        self.tree.pack(fill="both", expand=True)
-
-        self.tree.tag_configure("connected", background="#d2ffd2")
-        self.tree.tag_configure("errored", background="#ffd2d2")
-
-        # Right side: control panel
-        control_frame = ttk.Frame(main_frame)
-        control_frame.pack(side="right", fill="y", padx=10, pady=5)
-
-        control_title = ttk.Label(control_frame, text="Input", font=("Helvetica", 14))
-        control_title.pack(pady=5)
-
-        self.device_label = ttk.Label(control_frame, text="Select a device")
-        self.device_label.pack(pady=5)
-
-        self.stage_sel = tk.StringVar(value="sustainer")  # Default selected value
-
-        radio_label = ttk.Label(control_frame, text="Stage Select:")
-        radio_label.pack(pady=5)
-
-        self.radio1 = ttk.Radiobutton(control_frame, text="Sustainer", variable=self.stage_sel, value="sustainer")
-        self.radio1.pack()
-
-        self.radio2 = ttk.Radiobutton(control_frame, text="Booster", variable=self.stage_sel, value="booster")
-        self.radio2.pack()
-
-        self.radio3 = ttk.Radiobutton(control_frame, text="Duo", variable=self.stage_sel, value="duo")
-        self.radio3.pack()
-
-        self.do_log = tk.BooleanVar(value=True)
-
-        self.do_log_checkbox = ttk.Checkbutton(control_frame, text="Generate Log File", variable=self.do_log)
-        self.do_log_checkbox.pack(pady=(0, 5))
-
-
-        self.radio1.config(state="disabled")
-        self.radio2.config(state="disabled")
-        self.radio3.config(state="disabled")
-        self.do_log_checkbox.config(state="disabled")
-        # Separator
-        ttk.Separator(control_frame, orient="horizontal").pack(fill="x", pady=15)
-
-        stats_title = ttk.Label(control_frame, text="Network", font=("Helvetica", 12, "underline"))
-        stats_title.pack(pady=(0, 5))
-
-        label = ttk.Label(control_frame, text="GSS IP:")
-        label.pack(pady=5)
-
-        self.ip_entry = tk.Entry(control_frame)
-        self.ip_entry.pack(pady=5)
-
-        self.connect_btn = ttk.Button(control_frame, text="Connect", command=self.perform_action, state="disabled")
-        self.connect_btn.pack(pady=2)
-
-        self.inspect_btn = ttk.Button(control_frame, text="Console", command=self.inspect_window, state="disabled")
-        self.inspect_btn.pack(pady=2)
-
-
-        stats_title = ttk.Label(control_frame, text="System", font=("Helvetica", 12, "underline"))
-        stats_title.pack(pady=(20, 5))
-
-        self.total_label = ttk.Label(control_frame, text=f"Total Devices: {len(devices)}")
-        self.total_label.pack(anchor="w")
-
-        online_count = sum(1 for d in devices if d.to_dict()["status"].lower() == "online")
-        self.online_label = ttk.Label(control_frame, text=f"Online: {online_count}")
-        self.online_label.pack(anchor="w")
-
-
-        def deselect(event=None):
-            self.selected_device = None
-            self.tree.selection_remove(self.tree.selection())
-            self.device_label.config(text="Select a device")
-            self.radio1.config(state="disabled")
-            self.radio2.config(state="disabled")
-            self.radio3.config(state="disabled")
-            self.inspect_btn.config(state="disabled")
-            self.connect_btn.config(state="disabled")
-            self.do_log_checkbox.config(state="disabled")
-        self.bind("<Escape>", deselect)
-
+    def flash_midas(self):
+        print("will flash")
 
     def on_select(self, event):
         selected = self.tree.selection()
@@ -682,7 +486,6 @@ class DeviceApp(tk.Tk):
             target_device.pipe_conn, child_conn = multiprocessing.Pipe()
             target_device.proc = multiprocessing.Process(target=run_standalone_worker, args=(child_conn, ip, self.selected_device, self.stage_sel.get(), should_log))
             target_device.proc.start()
-
 
     def inspect_window(self):
         if self.selected_device:
