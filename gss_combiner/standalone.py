@@ -365,6 +365,10 @@ class TelemetryStandalone():
                     print("Exception while handling exception!")
 
 
+class Midas_Standalone():
+    def __init__(self):
+        pass
+
 def parse_params(arguments):
     arg_parser = argparse.ArgumentParser(
         prog='GSS Combiner (Standalone)',
@@ -376,6 +380,7 @@ def parse_params(arguments):
     arg_parser.add_argument("--booster", action="store_true", help="Should we use booster?")
     arg_parser.add_argument("--sustainer", action="store_true", help="Should we use sustainer?")
     arg_parser.add_argument("--duo", action="store_true", help="Should we use feather duo?")
+    arg_parser.add_argument("--midas", action="store_true", help="Should we use midas?")
 
     arg_parser.add_argument("-n", "--no-log", action="store_true", help="Will not log data to logfiles for this run")
     arg_parser.add_argument("-i", "--ip", type=str, help="Connects to a specific IP. (Defaults to localhost)")
@@ -399,6 +404,9 @@ def parse_params(arguments):
         source = "Multistage"
         print("Disregarding any booster/sustainer commands. Initializing as Feather Duo.", flush=True)
 
+    if args.midas:
+        source = "Midas"
+
     ip = "localhost"
     if args.ip:
         ip = args.ip
@@ -409,6 +417,9 @@ if __name__ == "__main__":
 
     stage, should_log, ip, port = parse_params(sys.argv[1:])
 
-    t = TelemetryStandalone(port, ip, stage, should_log)
+    if (stage == "Midas"):
+        t = Midas_Standalone(port, ip, stage, should_log)
+    else:
+        t = TelemetryStandalone(port, ip, stage, should_log)    
 
     t.run()

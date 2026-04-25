@@ -133,10 +133,10 @@ class FeatherSubprocess:
                         return
                     
                     if ident_value == "MIDAS_MINI":
-                        self.type = "MIDAS Mini"
+                        self.type = "MIDAS MINI"
                         self.stat = "OFFLINE"
-                        self.__serial.close()
-                        self.__serial = None
+                        # self.__serial.close()
+                        # self.__serial = None
                         return
             
             self.type = "UNKNOWN"
@@ -182,7 +182,7 @@ class FeatherSubprocess:
         return {"name": self.type, "port": self.__port, "status": self.stat, "server": self.__ip, "meta": self.meta}
 
 
-devices: list[FeatherSubprocess] = []
+devices: list[FeatherSubprocess] = [] #check if empty list works
 
 def get_device(port):
     # get the device
@@ -426,6 +426,7 @@ class DeviceApp(tk.Tk):
                     self.radio1.config(state="normal")
                     self.radio2.config(state="normal")
                     self.radio3.config(state="disabled")
+                    self.mini.config(state="disabled")
                     self.stage_sel.set("sustainer")
 
                 if _device.type == "FEATHER DUO":
@@ -433,6 +434,13 @@ class DeviceApp(tk.Tk):
                     self.radio2.config(state="disabled")
                     self.radio3.config(state="normal")
                     self.stage_sel.set("duo")
+
+                if _device.type == "MIDAS MINI":
+                    self.radio1.config(state="disabled")
+                    self.radio2.config(state="disabled")
+                    self.radio3.config(state="disabled")
+                    self.mini.config(state="normal")
+                    self.stage_sel.set("midas")
 
                 if _device.is_online():
                     dev_ip, dev_sl = _device.get_stat()
