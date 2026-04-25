@@ -18,18 +18,33 @@ import queue
 def _build_ejection_test_tab(self, parent, name):
     ttk.Label(parent,font=("Helvetica", 14)).pack(expand=True)
 
-    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-    img_path = os.path.join(BASE_DIR,"ali.png")
-    img = tk.PhotoImage(file=img_path)
-    label = ttk.Label(parent, image=img)
-    label.image = img
-    label.place(x=10, y=10)    
+    # BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+    # img_path = os.path.join(BASE_DIR,"ali.png")
+    # img = tk.PhotoImage(file=img_path)
+    # label = ttk.Label(parent, image=img)
+    # label.image = img
+    # label.place(x=10, y=10)    
 
     warning = ttk.Label(parent, text="WARNING: Ensure area is clear before initiating pyro test")
     
     # line = ttk.Label(parent, text="--------------------------------------------------------------------------------------------------------------")
     # line.place(x = 0, y = 120)
-    warning.place(x = 20, y = 10)
+    warning.place(relx=0.5, y=90, anchor="n")
+
+    stage_label = ttk.Label(parent, text="Stage:")
+    stage_label.place(x=20, y=80)
+
+    self.stage_var = tk.StringVar(value="Booster")
+
+    stage_dropdown = ttk.Combobox(
+        parent,
+        textvariable=self.stage_var,
+        values=["Booster", "Sustainer"],
+        state="readonly",
+        width=15
+)
+    stage_dropdown.place(x=80, y=80)
+
     force_safe_button = ttk.Button(parent, text="Force Safe", padding=(20, 20), command=lambda: force_safe(self))
     force_safe_button.place(x=20,y=250)
 
@@ -56,11 +71,19 @@ def force_safe(self):
     print("force safe")
 
 def pyro_test(self):
+
+    stage = self.stage_var.get()
+    print(f"pyro test on {stage}")
     self.fire_A_button.config(state="normal")
     self.fire_B_button.config(state="normal")
     self.fire_C_button.config(state="normal")
     self.fire_D_button.config(state="normal")
     print("pyro test")
+
+    if hasattr(self, "pyro_timer"):
+        self.after_cancel(self.pyro_timer)
+
+    self.pyro_timer = self.after(10000, lambda: force_safe(self))
 
 def fire_A():
     print("FIRE A")
