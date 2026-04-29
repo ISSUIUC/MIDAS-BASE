@@ -25,7 +25,7 @@ def _build_home_tab(self, parent, devices):
         main_frame.pack(fill="both", expand=True, padx=10, pady=10)
         self.num_devices_label = ttk.Label(main_frame, text=f"Num devices connected: {len(devices)}")
         self.num_devices_label.pack(pady=2)
-        self.connect_btn = ttk.Button(main_frame, text="Start Ground Station", command=self.start_server_with_all_devices, state="enabled" if len(devices) else "disabled")
+        self.connect_btn = ttk.Button(main_frame, text="Start Ground Station", command=self.make_ground_station_thread, state="enabled")
         self.connect_btn.pack(pady=2)
 
         
