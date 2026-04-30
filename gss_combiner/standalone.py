@@ -366,8 +366,45 @@ class TelemetryStandalone():
 
 
 class Midas_Standalone():
-    def __init__(self):
-        pass
+
+    def __init__(self, port, ip, stage, should_log):
+
+        self.__comport = serial.Serial()
+        self.__comport.port = port
+        self.__comport.baudrate = 9600
+        self.__comport.write_timeout = 1
+        self.__comport.timeout = 0.05
+        self.__comport.dtr = False
+        self.__comport.rts = False
+        
+        self.__comport.open()
+        self.__comport.reset_input_buffer()
+
+        print(f"MIDAS MINI connected on {port}")
+        print(f"REPORT_OK:{ip}", flush=True)
+
+    def run(self):
+        while True:
+            # Read from serial and print to stdout
+            if self.__comport.in_waiting:
+                try:
+                    line = self.__comport.readline().decode("ascii", errors="replace").strip()
+                    if line:
+                        print(f"[F] {line}", flush=True)
+                except Exception as e:
+                    print(f"[MIDAS] Read error: {e}", flush=True)
+
+            # Handle stdin commands piped in from the GUI
+            if not stdin_q.empty():
+                cmd = stdin_q.get().strip()
+                if cmd:
+                    try:
+                        self.__comport.write((cmd + "\r\n").encode())
+                        print(f"[TO MIDAS] {cmd}", flush=True)
+                    except Exception as e:
+                        print(f"[MIDAS] Write error: {e}", flush=True)
+
+            time.sleep(0.01)
 
 def parse_params(arguments):
     arg_parser = argparse.ArgumentParser(

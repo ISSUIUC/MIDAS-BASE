@@ -142,33 +142,7 @@ def _build_config_tab(self, parent):
                 if key in data:
                     entry.insert(0, data[key])
                     
-        # ── THRESHOLD CONFIG (under pyro) ──
-        threshold_frame = ttk.LabelFrame(left_frame, text="Threshold Config")
-        threshold_frame.pack(fill="both", expand=True, pady=10)
 
-        self.threshold_entries = {}
-
-        threshold_fields = [
-            ("fsms_pt_disarm_t", "(float)"),
-            ("fsms_boost_xl", "(float)"),
-            ("fsms_boost_lockin_t", "(float)"),
-            ("fsms_burnout_xl", "(float)"),
-            ("fsms_burnout_lockin_t", "(float)"),
-            ("fsms_apogee_detect_spd", "(float)"),
-            ("fsms_apogee_lockin_t", "(float)"),
-            ("fsms_main_lockout_t", "(float)"),
-            ("fsms_landed_entry_t", "(float)"),
-            ("fsms_landed_t", "(float)"),
-            ("fsms_landed_detect_spd", "(float)"),
-            ("fsms_landed_t_lockout", "(float)"),
-            ("fsms_cruise_lockout_spd", "(float)")
-        ]
-
-        for name, typ in threshold_fields:
-            self.threshold_entries[name] = add_row(
-                threshold_frame,
-                f"{name} {typ}"
-            )
         # SWITCH
         def on_channel_change(event=None):
             save_current_channel()
@@ -185,6 +159,14 @@ def _build_config_tab(self, parent):
             midas_frame,
             text="FLASH",
             command=self.flash_midas,
+            width=20
+        )
+        flash_btn.pack(pady=20)
+
+        load_btn = ttk.Button(
+            midas_frame,
+            text="LOAD",
+            command=self.load_midas,
             width=20
         )
         flash_btn.pack(pady=20)

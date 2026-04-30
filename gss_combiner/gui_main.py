@@ -41,7 +41,13 @@ def is_port_taken(port):
         bool: True if the port is taken, False otherwise.
     """
     try:
-        ser = serial.Serial(port, write_timeout=1, timeout=2)
+        ser = serial.Serial()
+        ser.port = port
+        ser.write_timeout = 1
+        ser.timeout = 2
+        ser.dtr = False
+        ser.rts = False
+        ser.open()
         return False, ser  # Port is free
     except serial.SerialException as e:
         return True, None
@@ -135,8 +141,6 @@ class FeatherSubprocess:
                     if ident_value == "MIDAS_MINI":
                         self.type = "MIDAS MINI"
                         self.stat = "OFFLINE"
-                        # self.__serial.close()
-                        # self.__serial = None
                         return
             
             self.type = "UNKNOWN"
@@ -394,7 +398,15 @@ class DeviceApp(tk.Tk):
         ttk.Label(parent, text=f"{name} Temporary", font=("Helvetica", 14)).pack(expand=True)
 
     def flash_midas(self):
-        print("will flash")
+        print("Flashing")
+
+    def load_midas(self):
+
+        self.__serial.write("LOAD\n".encode())
+        time.sleep(0.5)
+        data = self.__serial.read_all().decode().splitlines()
+        for line in data:
+            print(f"[{self.__port}] {line}")
 
     def on_select(self, event):
         selected = self.tree.selection()
