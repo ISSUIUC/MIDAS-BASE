@@ -386,7 +386,6 @@ class DeviceApp(tk.Tk):
 
         _build_connect_tab(self, connect_tab, devices)
         _build_config_tab(self, config_tab)
-        _build_home_tab(self, home_tab, "HOME")
         
         _build_ejection_test_tab(self, test_tab, "TEST")
         _build_telem_tab(self, telem_tab, "TELEM")
