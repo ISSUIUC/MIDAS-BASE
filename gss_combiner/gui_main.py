@@ -19,6 +19,10 @@ from tabs.connect import _build_connect_tab
 from tabs.ejection_test import _build_ejection_test_tab
 from tabs.telem import _build_telem_tab
 from tabs.export import _build_export_tab
+from tkinter import filedialog
+from matplotlib import pyplot as plt
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+
 
 def get_feather_duo_ports():
     """
@@ -251,6 +255,7 @@ class DeviceApp(tk.Tk):
         self.geometry("800x550")
         self.selected_device = None
         self.windows = []
+        self.input_file = None
 
         # MIDAS BASE state
         self.gss_running = False
@@ -492,6 +497,52 @@ class DeviceApp(tk.Tk):
             print("Opening terminal window")
             self.open_terminal_window(self.selected_device)
             # Add real logic here
+    
+    def open_input_file(self):
+        self.input_file = self.upload_file()
+        if not self.input_file:
+            return
+        
+        self.input_file_thing.config(text=f"Uploaded file: {self.input_file}")
+        data = []
+        with open(self.input_file, "r") as f:
+            for line in f:
+                try: 
+                    clean_line = line[6:].replace("'", '"')
+                    data.append(json.loads(clean_line))
+                except:
+                    continue
+
+        barometer_data = [
+            dp["value"]["barometer_altitude"]
+            for dp in data
+            if "value" in dp and "barometer_altitude" in dp["value"]
+        ]
+        for datapoint in data:
+            val = datapoint["value"]
+            if "barometer_altitude" in val.keys():
+                barometer_data.append(val["barometer_altitude"])
+
+
+        print(barometer_data)
+
+        fig = plt.figure(1)
+        # plt.ion()
+
+        plt.plot([i for i, _ in enumerate(barometer_data)], barometer_data)
+        plt.xlabel("Time (s?)")
+        plt.ylabel("Altitude (m?)")
+        plt.title("Barometer Altitude")
+
+        canvas = FigureCanvasTkAgg(fig, master=self.telem_frame)
+        canvas.draw()
+        plot_widget = canvas.get_tk_widget()
+
+
+        # plt.show()
+        plot_widget.pack()
+
+        self.telem_frame.update_idletasks()
 
     def open_terminal_window(self, device):
         global devices
@@ -552,6 +603,15 @@ class DeviceApp(tk.Tk):
         submit_btn.pack(side="right", padx=5)
 
         input_entry.focus_set()
+    def upload_file(self):
+        # Opens a file dialog and captures the selected path
+        file_path = tk.filedialog.askopenfilename(
+            title="Select a file",
+            filetypes=[("Text files", "*.txt"), ("Telem files", "*.telem"), ("All files", "*.*")]
+        )
+        if file_path:
+            print(f"Selected file: {file_path}")
+            return file_path
 
 
 if __name__ == "__main__":
@@ -559,3 +619,4 @@ if __name__ == "__main__":
     app.after(1000, app.update_devices)
     app.after(50, app.update_stdouts)
     app.mainloop()
+
