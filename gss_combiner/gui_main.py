@@ -503,6 +503,7 @@ class DeviceApp(tk.Tk):
         if not self.input_file:
             return
         
+        
         self.input_file_thing.config(text=f"Uploaded file: {self.input_file}")
         data = []
         with open(self.input_file, "r") as f:
@@ -525,7 +526,9 @@ class DeviceApp(tk.Tk):
 
 
         print(barometer_data)
-
+        for widget in self.telem_frame.winfo_children():
+            widget.destroy()
+        plt.cla()
         fig = plt.figure(1)
         # plt.ion()
 
