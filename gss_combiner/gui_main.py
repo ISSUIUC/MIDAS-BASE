@@ -110,6 +110,7 @@ class DeviceApp(tk.Tk):
 
         # CONFIG state — which device is selected for config
         self.cfg_selected_port = None
+        self.command_sender = CommandSender(devices)
 
         self.create_widgets()
 
