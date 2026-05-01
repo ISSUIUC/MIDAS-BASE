@@ -10,12 +10,14 @@ def _build_ejection_test_tab(self, parent, name):
     stage_label = ttk.Label(parent, text="Stage:")
     stage_label.place(x=20, y=80)
 
-    self.stage_var = tk.StringVar(value="Booster")
+    stage_options = ["Booster", "Sustainer"]
+
+    self.stage_var = tk.StringVar(value=stage_options[0])
 
     stage_dropdown = ttk.Combobox(
         parent,
         textvariable=self.stage_var,
-        values=["Booster", "Sustainer"],
+        values=stage_options,
         state="readonly",
         width=15
     )
@@ -73,6 +75,9 @@ def _build_ejection_test_tab(self, parent, name):
     )
     self.fire_D_button.place(x=670, y=250)
 
+def send_command(self, command, stage_var):
+    if hasattr(self, 'command_sender'):
+        self.command_sender.send_telemetry_command(command, stage_var)
 
 def force_safe(self):
     self.fire_A_button.config(state="disabled")
@@ -84,8 +89,7 @@ def force_safe(self):
     if hasattr(self, "pyro_timer"):
         self.after_cancel(self.pyro_timer)
 
-    if hasattr(self, 'command_sender'):
-        self.command_sender.send_telemetry_command("SAFE", self.stage_var.get().lower())
+    send_command(self, "SAFE", self.stage_var.get().lower())
     print("force safe command sent")
 
 
@@ -105,23 +109,19 @@ def pyro_test(self):
 
 def fire_A(self):
     print("FIRE A")
-    if hasattr(self, 'command_sender'):
-        self.command_sender.send_telemetry_command("PA", self.stage_var.get().lower())
+    send_command(self, "PA", self.stage_var.get().lower())
 
 
 def fire_B(self):
     print("FIRE B")
-    if hasattr(self, 'command_sender'):
-        self.command_sender.send_telemetry_command("PB", self.stage_var.get().lower())
+    send_command(self, "PB", self.stage_var.get().lower())
 
 
 def fire_C(self):
     print("FIRE C")
-    if hasattr(self, 'command_sender'):
-        self.command_sender.send_telemetry_command("PC", self.stage_var.get().lower())
+    send_command(self, "PC", self.stage_var.get().lower())
 
 
 def fire_D(self):
     print("FIRE D")
-    if hasattr(self, 'command_sender'):
-        self.command_sender.send_telemetry_command("PD", self.stage_var.get().lower())
+    send_command(self, "PD", self.stage_var.get().lower())

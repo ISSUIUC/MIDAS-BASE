@@ -188,6 +188,14 @@ class FeatherSubprocess:
 
 devices: list[FeatherSubprocess] = [] #check if empty list works
 
+"""
+A class for sending commands to a specific device and stuff
+"""
+class CommandSender:
+    def send_telemetry_command(command: str, stage: str):
+        global devices
+        # Then write to the device
+
 def get_device(port):
     # get the device
     for _device in devices:
