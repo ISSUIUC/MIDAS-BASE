@@ -10,14 +10,14 @@ def _build_ejection_test_tab(self, parent, name):
     stage_label = ttk.Label(parent, text="Stage:")
     stage_label.place(x=20, y=80)
 
-    stage_options = ["Booster", "Sustainer"]
+    self.stage_options = ["Booster", "Sustainer"]
 
-    self.stage_var = tk.StringVar(value=stage_options[0])
+    self.stage_var = tk.StringVar(value=self.stage_options[0])
 
     stage_dropdown = ttk.Combobox(
         parent,
         textvariable=self.stage_var,
-        values=stage_options,
+        values=self.stage_options,
         state="readonly",
         width=15
     )
@@ -89,7 +89,7 @@ def force_safe(self):
     if hasattr(self, "pyro_timer"):
         self.after_cancel(self.pyro_timer)
 
-    send_command(self, "SAFE", self.stage_var.get().lower())
+    send_command(self, "safe ", self.stage_var.get().lower())
     print("force safe command sent")
 
 
@@ -105,23 +105,25 @@ def pyro_test(self):
     if hasattr(self, "pyro_timer"):
         self.after_cancel(self.pyro_timer)
 
+    send_command(self, "pyro_test ", self.stage_var.get().lower())
+
     self.pyro_timer = self.after(10000, lambda: force_safe(self))
 
 def fire_A(self):
     print("FIRE A")
-    send_command(self, "PA", self.stage_var.get().lower())
+    send_command(self, "fire A", self.stage_var.get().lower())
 
 
 def fire_B(self):
     print("FIRE B")
-    send_command(self, "PB", self.stage_var.get().lower())
+    send_command(self, "fire B", self.stage_var.get().lower())
 
 
 def fire_C(self):
     print("FIRE C")
-    send_command(self, "PC", self.stage_var.get().lower())
+    send_command(self, "fire C", self.stage_var.get().lower())
 
 
 def fire_D(self):
     print("FIRE D")
-    send_command(self, "PD", self.stage_var.get().lower())
+    send_command(self, "fire D", self.stage_var.get().lower())
