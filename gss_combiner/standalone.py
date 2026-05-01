@@ -451,7 +451,6 @@ def parse_params(arguments):
     return source, should_log, ip, args.port
 
 if __name__ == "__main__":
-
     stage, should_log, ip, port = parse_params(sys.argv[1:])
 
     if (stage == "Midas"):

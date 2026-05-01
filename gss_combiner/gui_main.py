@@ -398,15 +398,12 @@ class DeviceApp(tk.Tk):
         ttk.Label(parent, text=f"{name} Temporary", font=("Helvetica", 14)).pack(expand=True)
 
     def flash_midas(self):
-        print("Flashing")
+        target_device = get_device(self.selected_device)
+        target_device.pipe_conn.send("hi\n")
 
     def load_midas(self):
-
-        self.__serial.write("LOAD\n".encode())
-        time.sleep(0.5)
-        data = self.__serial.read_all().decode().splitlines()
-        for line in data:
-            print(f"[{self.__port}] {line}")
+        target_device = get_device(self.selected_device)
+        target_device.pipe_conn.send("hi\n")
 
     def on_select(self, event):
         selected = self.tree.selection()
