@@ -10,22 +10,17 @@ class Canvas:
         self.xlabel = kwargs.get("xlabel") if "xlabel" in kwargs else ""
         self.ylabel = kwargs.get("ylabel") if "ylabel" in kwargs else ""
         self.fig_id = Canvas.id
-        Canvas.id += 1
+        # Canvas.id += 1
         self.fig = plt.figure(self.fig_id)
     def plot(self, plt):
         plt.plot(self.xdata, self.ydata)
         plt.xlabel(self.xlabel)
         plt.ylabel(self.ylabel)
         plt.title(self.title)
-        total_width = self.parent.winfo_width()
-        total_height = self.parent.winfo_height()
-        self_width = total_width / 4.3
-        self_height = self_width * 4.8 / 6.4
         dpi = self.parent.winfo_fpixels('1i')
-        self.fig.set_size_inches(self_width / dpi, self_height / dpi, forward=True)
         self.canvas = FigureCanvasTkAgg(self.fig, master=self.parent)
         self.plot_widget = self.canvas.get_tk_widget()
-        self.plot_widget.grid(row=(self.fig_id - 1) // 4, column=(self.fig_id - 1) % 4, padx=total_width*0.02325/5, pady=total_width*0.0235/5)
+        self.plot_widget.pack()
         self.canvas.draw()
     
     def destroy(self, plt):
@@ -127,3 +122,7 @@ TELEM_DATA_KEYS = {
         "title": "Pyro D"
     }
 }
+
+REVERSE_TELEM_DATA_KEYS = {value["title"]: key 
+                           for key, value in TELEM_DATA_KEYS.items() 
+                           if value.get("title") is not None}

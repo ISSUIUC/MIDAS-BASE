@@ -22,7 +22,7 @@ from tabs.export import _build_export_tab
 from tkinter import filedialog
 from matplotlib import pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
-from util.canvas import Canvas, TELEM_DATA_KEYS
+from util.canvas import Canvas, TELEM_DATA_KEYS, REVERSE_TELEM_DATA_KEYS
 
 
 def get_feather_duo_ports():
@@ -259,7 +259,7 @@ class DeviceApp(tk.Tk):
 
         # Graphing stuff
         self.input_file = None
-        self.canvases = None
+        self.canvas = None
 
         # MIDAS BASE state
         self.gss_running = False
@@ -521,28 +521,39 @@ class DeviceApp(tk.Tk):
         
         data = [dp["value"] 
                 for dp in data
-                if "value" in dp ]
-        # Get the value from each data point
-        if self.canvases is not None:
-            for canvas in self.canvases:
-                canvas.destroy(plt)
+                if "value" in dp]
         
-        self.canvases = []
+        self.data = data
+        # Get the value from each data point
 
         
-        for key, value in TELEM_DATA_KEYS.items():
-            ydata = [dp[key]
-                     for dp in data
-                     if key in dp]
-            xdata = [i for i in range(len(ydata))]
-            
-            new_canvas = Canvas(plt, self.telem_frame, xdata, ydata, **value)
-            self.canvases.append(new_canvas)
-            new_canvas.plot(plt)
 
 
 
         self.telem_frame.update_idletasks()
+    
+    def telem_dropdown_changed(self, event):
+        new_val = self.telem_dropdown.get()
+        print(f"the new val is {new_val}")
+        data_key = REVERSE_TELEM_DATA_KEYS.get(new_val)
+        if data_key is None:
+            return
+        
+        if self.canvas is not None:
+            self.canvas.destroy(plt)
+        
+        ydata = [dp[data_key]
+                    for dp in self.data
+                    if data_key in dp]
+        xdata = [i for i in range(len(ydata))]
+        
+        new_canvas = Canvas(plt, self.telem_frame, xdata, ydata, **TELEM_DATA_KEYS[data_key])
+        new_canvas.plot(plt)
+        self.canvas = new_canvas
+        
+        
+
+
 
     def open_terminal_window(self, device):
         global devices
