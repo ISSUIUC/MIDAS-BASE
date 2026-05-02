@@ -71,18 +71,30 @@ def _build_config_tab(self, parent):
 
 
         def add_row(parent, label):
+
             frame = ttk.Frame(parent)
             frame.pack(fill="x", pady=2)
             ttk.Label(frame, text=label, width=30).pack(side="left")
-            entry = ttk.Entry(frame)
-            entry.pack(side="left", fill="x", expand=True)
-            return entry
 
+            if "(bool)" in label:
+                var = tk.BooleanVar()
+
+                entry = ttk.Checkbutton(frame, variable=var)
+            else:
+                var = tk.StringVar()
+                
+                entry = ttk.Entry(frame, textvariable=var)
+
+            entry.pack(side="left", fill="x", expand=True)
+
+            return var 
 
         # ── LEFT SIDE (GLOBAL / PYRO) ──
         self.cruise_lockout = add_row(left_frame, "CRUISE_LOCKOUT_EN (bool)")
         self.main_alt = add_row(left_frame, "MAIN_ALT (float)")
         self.pyro_fire_t = add_row(left_frame, "PYRO_FIRE_T (float)")
+        self.serial_no = add_row(left_frame, "MIDAS Serial No")
+        self.midas_telem_freq = add_row(left_frame, "MIDAS Telemetry Frequency")
 
 
         # ── RIGHT SIDE (CHANNEL) ──
@@ -131,21 +143,18 @@ def _build_config_tab(self, parent):
         # SAVE current channel
         def save_current_channel():
             ch = self.selected_channel.get()
-            for key, entry in self.channel_entries_ui.items():
-                self.channel_entries_data[ch][key] = entry.get()
-
-        # LOAD channel
+            for key, var in self.channel_entries_ui.items():
+                self.channel_entries_data[ch][key] = var.get()
+        
         def load_channel(ch):
             data = self.channel_entries_data[ch]
-            for key, entry in self.channel_entries_ui.items():
-                entry.delete(0, tk.END)
+            for key, var in self.channel_entries_ui.items():
                 if key in data:
-                    entry.insert(0, data[key])
+                    var.set(data[key])
                     
 
         # SWITCH
-        def on_channel_change(event=None):
-            save_current_channel()
+        def on_channel_change(event):
             load_channel(self.selected_channel.get())
 
         channel_dropdown.bind("<<ComboboxSelected>>", on_channel_change)
@@ -161,7 +170,7 @@ def _build_config_tab(self, parent):
             command=self.flash_midas,
             width=20
         )
-        flash_btn.pack(pady=20)
+        flash_btn.pack(side="right", pady=20)
 
         load_btn = ttk.Button(
             midas_frame,
@@ -169,7 +178,7 @@ def _build_config_tab(self, parent):
             command=self.load_midas,
             width=20
         )
-        flash_btn.pack(pady=20)
+        load_btn.pack(side="left", pady=20)
         
         self.config_views["MIDAS"] = midas_frame
         self.config_views["Feather Duo"] = feather_frame
@@ -190,3 +199,5 @@ def _build_config_tab(self, parent):
 
         # Show default view
         switch_view()
+
+        self.load_channel = load_channel

@@ -301,7 +301,6 @@ class DeviceApp(tk.Tk):
             try:
                 while device.pipe_conn.poll():
                     msg = device.pipe_conn.recv()
-                    # print("MSG RECV: ", msg)
                     if msg.startswith("REPORT_OK:"):
                         ip = msg[10:]
                         device.stat = "ONLINE"
@@ -312,6 +311,18 @@ class DeviceApp(tk.Tk):
                         device.cleanup()
                         print(f"[!] Process {device.get_port()} Triggering a device cleanup:")
                         continue
+
+                    if msg.startswith("[TO MIDAS]"):
+                        self._last_cmd = msg[11:].strip()
+
+                    elif msg.startswith("[F]"):
+
+                        val = msg[3:].strip() #the stupid F bro i swear, ts was breaking everything
+
+                        self.parser_midas(self._last_cmd, val)
+
+                        self._last_cmd = None
+
                     device.add_to_stdout(msg)
             except:
                 print(f"[{device.get_port()}] Detected an unexpected pipe closure, but process isn't cleaned up!")
@@ -327,6 +338,39 @@ class DeviceApp(tk.Tk):
 
 
         self.after(50, self.update_stdouts)
+
+
+    def parser_midas(self, cmd, val):
+
+        for unit in [" MHz", " m/s", " ms", " m", " degrees"]:
+            val = val.replace(unit, "")
+        val = val.strip()
+
+        if "(true)" in val:
+            val = True
+        elif "(false)" in val:
+            val = False
+
+        if cmd == "serial get":
+            self.serial_no.set(val)
+        elif cmd == "frequency get":
+            self.midas_telem_freq.set(val)
+        elif cmd == "fsm threshold CRUISE_LOCKOUT_EN":
+            self.cruise_lockout.set(val)
+        elif cmd == "fsm threshold MAIN_ALT":
+            self.main_alt.set(val)
+        elif cmd == "fsm threshold PYRO_FIRE_T":
+            self.pyro_fire_t.set(val)
+
+        elif cmd.startswith("fsm ") and len(cmd.split()) == 3:
+
+            fsm, ch, field = cmd.split()
+
+            self.channel_entries_data[ch][field] = val
+
+            if self.selected_channel.get() == ch:
+                self.load_channel(ch)
+
 
     def update_device_list(self):
         # Clear treeview
@@ -403,7 +447,49 @@ class DeviceApp(tk.Tk):
 
     def load_midas(self):
         target_device = get_device(self.selected_device)
-        target_device.pipe_conn.send("hi\n")
+
+        if not target_device or not target_device.pipe_conn:
+            print("No device connected")
+            return
+
+        target_device.pipe_conn.send("echo 0\n")
+
+        #GLOBALS
+        target_device.pipe_conn.send("serial get\n")
+        time.sleep(.2)
+
+        target_device.pipe_conn.send("frequency get\n")
+        time.sleep(.2)
+
+        target_device.pipe_conn.send("fsm threshold CRUISE_LOCKOUT_EN\n")
+        time.sleep(.2)
+
+        target_device.pipe_conn.send("fsm threshold MAIN_ALT\n")
+        time.sleep(.2)
+
+        target_device.pipe_conn.send("fsm threshold PYRO_FIRE_T\n")
+        time.sleep(.2)
+
+        # CHANNELS
+        channels = ["A", "B", "C", "D"]
+        fields = [
+            "ENABLE",
+            "FSM_TRIGGER",
+            "DELAY",
+            "MAX_TILT",
+            "AFTER_MOTOR",
+            "LAUNCH_T_GT",
+            "LAUNCH_T_LT",
+            "VX_MIN",
+            "VX_MAX"
+        ]
+
+        for ch in channels:
+            for field in fields:
+                cmd = f"fsm {ch} {field}\n"
+                target_device.pipe_conn.send(cmd)
+                time.sleep(.2)
+
 
     def on_select(self, event):
         selected = self.tree.selection()
