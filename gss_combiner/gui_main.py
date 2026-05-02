@@ -441,9 +441,74 @@ class DeviceApp(tk.Tk):
     def _build_poop(self, parent, name):
         ttk.Label(parent, text=f"{name} Temporary", font=("Helvetica", 14)).pack(expand=True)
 
+    channels = ["A", "B", "C", "D"]
+    fields = [
+        "ENABLE",
+        "FSM_TRIGGER",
+        "DELAY",
+        "MAX_TILT",
+        "AFTER_MOTOR",
+        "LAUNCH_T_GT",
+        "LAUNCH_T_LT",
+        "VX_MIN",
+        "VX_MAX"
+    ]
+
     def flash_midas(self):
         target_device = get_device(self.selected_device)
-        target_device.pipe_conn.send("hi\n")
+
+        if not target_device or not target_device.pipe_conn:
+            print("No device connected")
+            return
+
+        target_device.pipe_conn.send("echo 0\n")
+
+        cruise_lockout, main_alt, pyro_fire_t, serial_no, midas_telem_freq = self.get_globals()
+
+        #GLOBALS
+        target_device.pipe_conn.send(f"serial set {serial_no}\n")
+        time.sleep(.2)
+        #print(f"serial set {serial_no}\n")
+
+
+        target_device.pipe_conn.send(f"frequency set {midas_telem_freq}\n")
+        time.sleep(.2)
+        #print(f"frequency set {midas_telem_freq}\n")
+
+        cruise_lockout_num = 0
+        if cruise_lockout:
+            cruise_lockout_num = 1
+        target_device.pipe_conn.send(f"fsm threshold CRUISE_LOCKOUT_EN {cruise_lockout}\n")
+        # time.sleep(.2)
+        #print(f"fsm threshold CRUISE_LOCKOUT_EN {cruise_lockout_num}\n")
+
+        target_device.pipe_conn.send(f"fsm threshold MAIN_ALT {main_alt}\n")
+        time.sleep(.2)
+        #print(f"fsm threshold MAIN_ALT {main_alt}\n")
+
+        target_device.pipe_conn.send(f"fsm threshold PYRO_FIRE_T {pyro_fire_t}\n")
+        time.sleep(.2)
+        #print(f"fsm threshold MAIN_ALT {pyro_fire_t}\n")
+
+        # CHANNELS
+        
+
+        for ch in self.channels:
+            for field in self.fields:
+                data = self.channel_entries_data[ch]
+
+                varnum = 0
+                if field == "ENABLE":
+                    if data[field]:
+                        varnum = 1
+                    cmd = f"fsm {ch} {field} {varnum}\n"
+                else:
+                    cmd = f"fsm {ch} {field} {data[field]}\n"
+                #print(cmd)
+                target_device.pipe_conn.send(cmd)
+                time.sleep(.2)
+
+
 
     def load_midas(self):
         target_device = get_device(self.selected_device)
@@ -471,21 +536,10 @@ class DeviceApp(tk.Tk):
         time.sleep(.2)
 
         # CHANNELS
-        channels = ["A", "B", "C", "D"]
-        fields = [
-            "ENABLE",
-            "FSM_TRIGGER",
-            "DELAY",
-            "MAX_TILT",
-            "AFTER_MOTOR",
-            "LAUNCH_T_GT",
-            "LAUNCH_T_LT",
-            "VX_MIN",
-            "VX_MAX"
-        ]
+        
 
-        for ch in channels:
-            for field in fields:
+        for ch in self.channels:
+            for field in self.fields:
                 cmd = f"fsm {ch} {field}\n"
                 target_device.pipe_conn.send(cmd)
                 time.sleep(.2)

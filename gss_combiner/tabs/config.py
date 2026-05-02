@@ -96,7 +96,10 @@ def _build_config_tab(self, parent):
         self.serial_no = add_row(left_frame, "MIDAS Serial No")
         self.midas_telem_freq = add_row(left_frame, "MIDAS Telemetry Frequency")
 
+        
 
+        def get_globals():
+            return self.cruise_lockout.get(), self.main_alt.get(), self.pyro_fire_t.get(), self.serial_no.get(), self.midas_telem_freq.get()
         # ── RIGHT SIDE (CHANNEL) ──
 
         # Channel selector
@@ -142,6 +145,7 @@ def _build_config_tab(self, parent):
 
         # SAVE current channel
         def save_current_channel():
+
             ch = self.selected_channel.get()
             for key, var in self.channel_entries_ui.items():
                 self.channel_entries_data[ch][key] = var.get()
@@ -179,6 +183,14 @@ def _build_config_tab(self, parent):
             width=20
         )
         load_btn.pack(side="left", pady=20)
+
+        load_btn = ttk.Button(
+            midas_frame,
+            text="SAVE",
+            command=save_current_channel,
+            width=20
+        )
+        load_btn.pack(side="left", pady=20)
         
         self.config_views["MIDAS"] = midas_frame
         self.config_views["Feather Duo"] = feather_frame
@@ -201,3 +213,6 @@ def _build_config_tab(self, parent):
         switch_view()
 
         self.load_channel = load_channel
+        self.save_current_channel = save_current_channel
+        self.get_globals = get_globals
+        
