@@ -22,6 +22,7 @@ from tabs.export import _build_export_tab
 from tkinter import filedialog
 from matplotlib import pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+from util.canvas import Canvas, TELEM_DATA_KEYS
 
 
 def get_feather_duo_ports():
@@ -255,7 +256,10 @@ class DeviceApp(tk.Tk):
         self.geometry("800x550")
         self.selected_device = None
         self.windows = []
+
+        # Graphing stuff
         self.input_file = None
+        self.canvases = None
 
         # MIDAS BASE state
         self.gss_running = False
@@ -508,42 +512,35 @@ class DeviceApp(tk.Tk):
         data = []
         with open(self.input_file, "r") as f:
             for line in f:
-                try: 
+                try:
                     clean_line = line[6:].replace("'", '"')
                     data.append(json.loads(clean_line))
                 except:
                     continue
-
-        barometer_data = [
-            dp["value"]["barometer_altitude"]
-            for dp in data
-            if "value" in dp and "barometer_altitude" in dp["value"]
-        ]
-        for datapoint in data:
-            val = datapoint["value"]
-            if "barometer_altitude" in val.keys():
-                barometer_data.append(val["barometer_altitude"])
-
-
-        print(barometer_data)
-        for widget in self.telem_frame.winfo_children():
-            widget.destroy()
         plt.cla()
-        fig = plt.figure(1)
-        # plt.ion()
+        
+        data = [dp["value"] 
+                for dp in data
+                if "value" in dp ]
+        # Get the value from each data point
+        if self.canvases is not None:
+            for canvas in self.canvases:
+                canvas.destroy(plt)
+        
+        self.canvases = []
 
-        plt.plot([i for i, _ in enumerate(barometer_data)], barometer_data)
-        plt.xlabel("Time (s?)")
-        plt.ylabel("Altitude (m?)")
-        plt.title("Barometer Altitude")
+        
+        for key, value in TELEM_DATA_KEYS.items():
+            ydata = [dp[key]
+                     for dp in data
+                     if key in dp]
+            xdata = [i for i in range(len(ydata))]
+            
+            new_canvas = Canvas(plt, self.telem_frame, xdata, ydata, **value)
+            self.canvases.append(new_canvas)
+            new_canvas.plot(plt)
 
-        canvas = FigureCanvasTkAgg(fig, master=self.telem_frame)
-        canvas.draw()
-        plot_widget = canvas.get_tk_widget()
 
-
-        # plt.show()
-        plot_widget.pack()
 
         self.telem_frame.update_idletasks()
 
