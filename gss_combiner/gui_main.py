@@ -10,6 +10,7 @@ from serial.tools.list_ports import comports
 import time
 import json
 import datetime
+import csv
 
 import threading
 import sys
@@ -397,7 +398,7 @@ class DeviceApp(tk.Tk):
         
         _build_ejection_test_tab(self, test_tab, "TEST")
         _build_telem_tab(self, telem_tab, "TELEM")
-        _build_export_tab(self, export_tab, "EXPORT")
+        _build_export_tab(self, export_tab)
 
     def _build_poop(self, parent, name):
         ttk.Label(parent, text=f"{name} Temporary", font=("Helvetica", 14)).pack(expand=True)
@@ -522,6 +523,7 @@ class DeviceApp(tk.Tk):
         data = [dp["value"] 
                 for dp in data
                 if "value" in dp ]
+        self.data = data
         # Get the value from each data point
         if self.canvases is not None:
             for canvas in self.canvases:
@@ -541,8 +543,28 @@ class DeviceApp(tk.Tk):
             new_canvas.plot(plt)
 
 
-
+        self.update_export_frame()
         self.telem_frame.update_idletasks()
+    
+    def update_export_frame(self):
+        if self.input_file:
+            self.export_file_button.configure(state="normal")
+            self.no_input_file_label.configure(text="Export your file here")
+            
+    def export_data(self):
+        filename = filedialog.asksaveasfilename()
+        with open(filename, "w", newline="") as f:
+            csvwriter = csv.writer(f)
+            headers = ["Time"] + list(self.data[0].keys())
+            csvwriter.writerow(headers)
+            for i, dp in enumerate(self.data):
+                row = []
+                row.append(i)
+                for header in headers[1:]:
+                    row.append(dp.get(header) if dp.get(header) is not None else "")
+                csvwriter.writerow(row)
+    
+
 
     def open_terminal_window(self, device):
         global devices
