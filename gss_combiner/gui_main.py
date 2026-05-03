@@ -464,6 +464,9 @@ class DeviceApp(tk.Tk):
         target_device.pipe_conn.send("echo 0\n")
 
         cruise_lockout, main_alt, pyro_fire_t, serial_no, midas_telem_freq = self.get_globals()
+        cruise_lockout_num = 0
+        if cruise_lockout:
+            cruise_lockout_num = 1
 
         #GLOBALS
         target_device.pipe_conn.send(f"serial set {serial_no}\n")
@@ -475,10 +478,7 @@ class DeviceApp(tk.Tk):
         time.sleep(.2)
         #print(f"frequency set {midas_telem_freq}\n")
 
-        cruise_lockout_num = 0
-        if cruise_lockout:
-            cruise_lockout_num = 1
-        target_device.pipe_conn.send(f"fsm threshold CRUISE_LOCKOUT_EN {cruise_lockout}\n")
+        target_device.pipe_conn.send(f"fsm threshold CRUISE_LOCKOUT_EN {cruise_lockout_num}\n")
         # time.sleep(.2)
         #print(f"fsm threshold CRUISE_LOCKOUT_EN {cruise_lockout_num}\n")
 
