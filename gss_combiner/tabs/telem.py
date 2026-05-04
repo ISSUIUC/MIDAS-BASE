@@ -14,6 +14,24 @@ import datetime
 import threading
 import sys
 import queue
+import json
+from util.canvas import TELEM_DATA_KEYS, REVERSE_TELEM_DATA_KEYS
+
 
 def _build_telem_tab(self, parent, name):
-    ttk.Label(parent, text=f"{name} Temporary", font=("Helvetica", 14)).pack(expand=True)
+    ttk.Label(parent, text="Telemetry", font=("Helvetica", 14)).pack()
+    ttk.Button(parent, text="Upload File", command=self.open_input_file).pack()
+
+    self.telem_frame = ttk.Frame(parent)
+    self.telem_frame.pack(expand=True)
+
+    dropdown_options = [value["title"] for key, value in TELEM_DATA_KEYS.items() if value.get("title") is not None]
+    self.telem_dropdown = ttk.Combobox(self.telem_frame, values=dropdown_options)
+    self.telem_dropdown.bind("<<ComboboxSelected>>", self.telem_dropdown_changed)
+    self.telem_dropdown.pack()
+
+
+
+
+    self.input_file_thing = ttk.Label(self.telem_frame, text="Input File")
+    self.input_file_thing.pack()
