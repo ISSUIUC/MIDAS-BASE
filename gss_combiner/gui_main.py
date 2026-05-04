@@ -548,6 +548,14 @@ class DeviceApp(tk.Tk):
         
         self.data = data
         # Get the value from each data point
+        self.update_export_frame()
+        self.telem_frame.update_idletasks()
+    
+    def update_export_frame(self):
+        if self.input_file:
+            self.export_file_button.configure(state="normal")
+            self.no_input_file_label.configure(text="Export your file here")
+
 
         
 
@@ -566,6 +574,7 @@ class DeviceApp(tk.Tk):
                 csvwriter.writerow(row)
 
         self.telem_frame.update_idletasks()
+    
     
     def telem_dropdown_changed(self, event):
         new_val = self.telem_dropdown.get()
