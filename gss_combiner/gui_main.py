@@ -552,6 +552,18 @@ class DeviceApp(tk.Tk):
         
 
 
+    def export_data(self):
+        filename = filedialog.asksaveasfilename()
+        with open(filename, "w", newline="") as f:
+            csvwriter = csv.writer(f)
+            headers = ["Time"] + list(self.data[0].keys())
+            csvwriter.writerow(headers)
+            for i, dp in enumerate(self.data):
+                row = []
+                row.append(i)
+                for header in headers[1:]:
+                    row.append(dp.get(header) if dp.get(header) is not None else "")
+                csvwriter.writerow(row)
 
         self.telem_frame.update_idletasks()
     
