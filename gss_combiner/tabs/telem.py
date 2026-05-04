@@ -42,9 +42,3 @@ def _build_telem_tab(self, parent, name):
 
     self.input_file_thing = ttk.Label(parent, text="Input File")
     self.input_file_thing.pack()
-    data = []
-    if (self.input_file):
-        with open(self.input_file, "r") as f:
-            for line in f.readlines():
-                data.append(json.loads(line))
-    print(data)
