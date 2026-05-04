@@ -10,6 +10,7 @@ from serial.tools.list_ports import comports
 import time
 import json
 import datetime
+import csv
 from pathlib import Path
 import threading
 import sys
@@ -398,7 +399,7 @@ class DeviceApp(tk.Tk):
         
         _build_ejection_test_tab(self, test_tab, "TEST")
         _build_telem_tab(self, telem_tab, "TELEM")
-        _build_export_tab(self, export_tab, "EXPORT")
+        _build_export_tab(self, export_tab)
         _build_home_tab(self, home_tab, devices)
 
     def _build_poop(self, parent, name):
