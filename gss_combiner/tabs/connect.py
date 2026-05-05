@@ -15,6 +15,7 @@ import threading
 import sys
 import queue
 
+
 # Original UI here
 def _build_connect_tab(self, parent, devices):
         """This is the original create_widgets content, now inside the CONNECT tab."""
@@ -73,6 +74,9 @@ def _build_connect_tab(self, parent, devices):
 
         self.radio3 = ttk.Radiobutton(control_frame, text="Duo", variable=self.stage_sel, value="duo")
         self.radio3.pack()
+
+        self.mini = ttk.Radiobutton(control_frame, text="Midas", variable=self.stage_sel, value="midas")
+        self.mini.pack()
 
         self.do_log = tk.BooleanVar(value=True)
 

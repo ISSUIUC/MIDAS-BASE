@@ -1,0 +1,3 @@
+[submodule "gss_combiner/GroundStation"]
+	path = gss_combiner/GroundStation
+	url = git@github.com:ISSUIUC/GroundStation.git
