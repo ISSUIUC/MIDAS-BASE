@@ -15,6 +15,7 @@ import threading
 import sys
 import queue
 
+
 # Original UI here
 def _build_connect_tab(self, parent, devices):
         """This is the original create_widgets content, now inside the CONNECT tab."""

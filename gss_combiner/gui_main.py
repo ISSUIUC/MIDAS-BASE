@@ -10,7 +10,7 @@ from serial.tools.list_ports import comports
 import time
 import json
 import datetime
-
+from pathlib import Path
 import threading
 import sys
 import queue
@@ -19,6 +19,8 @@ from tabs.connect import _build_connect_tab
 from tabs.ejection_test import _build_ejection_test_tab
 from tabs.telem import _build_telem_tab
 from tabs.export import _build_export_tab
+from tabs.home import _build_home_tab
+import webbrowser
 
 def get_feather_duo_ports():
     """
@@ -381,7 +383,6 @@ class DeviceApp(tk.Tk):
         # Default to MIDAS BASE
         self.notebook.select(home_tab)
 
-        self._build_poop(home_tab, "HOME")
 
         _build_connect_tab(self, connect_tab, devices)
         _build_config_tab(self, config_tab)
@@ -389,6 +390,7 @@ class DeviceApp(tk.Tk):
         _build_ejection_test_tab(self, test_tab, "TEST")
         _build_telem_tab(self, telem_tab, "TELEM")
         _build_export_tab(self, export_tab, "EXPORT")
+        _build_home_tab(self, home_tab, devices)
 
     def _build_poop(self, parent, name):
         ttk.Label(parent, text=f"{name} Temporary", font=("Helvetica", 14)).pack(expand=True)
@@ -440,6 +442,26 @@ class DeviceApp(tk.Tk):
                     self.ip_entry.delete(0, tk.END) # Clear existing content
                     self.ip_entry.insert(0, dev_ip)
                     self.stage_sel.set(_device.stage_sel)
+
+
+    def make_ground_station_thread(self):
+        self.ground_station_thread = threading.Thread(group=None, target=self.start_ground_station)
+        self.ground_station_thread.start()
+
+    def start_ground_station(self):
+        # input("Open Docker Desktop and then press enter ")
+        print("Trying to start Ground Station Docker Container...")
+        current_path = Path(__file__).resolve().parent / "GroundStation" / "compose.yml"
+        with subprocess.Popen(["docker-compose", "-f", current_path.absolute(), "up", "--build"], stdout=subprocess.PIPE, text=True, bufsize=1, stderr=subprocess.STDOUT) as proc:
+            opened_browser = False
+            for line in proc.stdout:
+                print(line)
+                if "127.0.0.1" in str(line) and not(opened_browser):
+                    print("Opening localhost")
+                    webbrowser.open("http://localhost")
+
+        # os.system(f"docker-compose -f {current_path.absolute()} up --build")
+
 
     def perform_action(self):
         global devices
