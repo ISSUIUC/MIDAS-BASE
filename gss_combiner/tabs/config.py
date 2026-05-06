@@ -1,20 +1,8 @@
 import tkinter as tk
 from tkinter import ttk
-import multiprocessing
-import subprocess
 from pathlib import Path
-import sys
-import os
-import serial
 from serial.tools.list_ports import comports
-import time
-import json
-import datetime
 from hw.hwtypes import HwType
-import threading
-import sys
-import queue
-
 
 def add_row(parent, label):
     frame = ttk.Frame(parent)
@@ -204,8 +192,8 @@ def _build_config_tab(self, parent):
         def get_globals():
             return self.cruise_lockout.get(), self.main_alt.get(), self.pyro_fire_t.get(), self.serial_no.get(), self.midas_telem_freq.get()
 
-        self.config_views[HwType.MIDAS_MINI.value] = midas_frame
-        self.config_views[HwType.FEATHER_DUO.value] = feather_frame
+        self.config_views[HwType.MIDAS_MINI] = midas_frame
+        self.config_views[HwType.FEATHER_DUO] = feather_frame
 
         # Place all frames in same spot
         for frame in self.config_views.values():
