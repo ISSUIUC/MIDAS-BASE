@@ -30,8 +30,5 @@ def _build_telem_tab(self, parent, name):
     self.telem_dropdown.bind("<<ComboboxSelected>>", self.telem_dropdown_changed)
     self.telem_dropdown.pack()
 
-
-
-
     self.input_file_thing = ttk.Label(self.telem_frame, text="Input File")
     self.input_file_thing.pack()

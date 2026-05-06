@@ -690,23 +690,44 @@ class DeviceApp(tk.Tk):
         
         self.input_file_thing.config(text=f"Uploaded file: {self.input_file}")
         data = []
-        with open(self.input_file, "r") as f:
-            for line in f:
-                try:
-                    clean_line = line[6:].replace("'", '"')
-                    data.append(json.loads(clean_line))
-                except:
-                    continue
-        plt.cla()
-        
-        data = [dp["value"] 
-                for dp in data
-                if "value" in dp]
-        
-        self.data = data
-        # Get the value from each data point
-        self.update_export_frame()
-        self.telem_frame.update_idletasks()
+        if self.input_file.endswith(".txt"):
+            with open(self.input_file, "r") as f:
+                for line in f:
+                    try:
+                        clean_line = line[6:].replace("'", '"')
+                        data.append(json.loads(clean_line))
+                    except:
+                        continue
+            plt.cla()
+            
+            data = [dp["value"] 
+                    for dp in data
+                    if "value" in dp]
+            
+            self.data = data
+            # Get the value from each data point
+            self.update_export_frame()
+            self.telem_frame.update_idletasks()
+        elif self.input_file.endswith(".telem"):
+            with open(self.input_file, "r") as f:
+                for line in f:
+                    try:
+                        data.append(json.loads(line))
+                    except:
+                        continue
+            plt.cla()
+            self.data = []
+            for i, dp in enumerate(data):
+                data_thing = dp["data"]["value"]
+                time_stamp = dp["data"]["unix"]
+                time_stamp_normalized = time_stamp - data[0]["data"]["unix"]
+                self.data.append(data_thing)
+                self.data[i]["unix"] = time_stamp_normalized
+            
+            self.update_export_frame()
+        else:
+            print("Invalid file. Please try again.")
+    
     
     def update_export_frame(self):
         if self.input_file:
@@ -747,6 +768,8 @@ class DeviceApp(tk.Tk):
                     for dp in self.data
                     if data_key in dp]
         xdata = [i for i in range(len(ydata))]
+        if self.data[0].get("unix") is not None:
+            xdata = [dp["unix"] for dp in self.data]
         
         new_canvas = Canvas(plt, self.telem_frame, xdata, ydata, **TELEM_DATA_KEYS[data_key])
         new_canvas.plot(plt)
