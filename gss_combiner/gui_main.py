@@ -707,7 +707,7 @@ class DeviceApp(tk.Tk):
             self.data = data
             # Get the value from each data point
             self.update_export_frame()
-            self.telem_frame.update_idletasks()
+            self.input_start_frame.config(to=len(self.data))
         elif self.input_file.endswith(".telem"):
             with open(self.input_file, "r") as f:
                 for line in f:
@@ -717,16 +717,20 @@ class DeviceApp(tk.Tk):
                         continue
             plt.cla()
             self.data = []
+            times = []
             for i, dp in enumerate(data):
                 data_thing = dp["data"]["value"]
                 time_stamp = dp["data"]["unix"]
                 time_stamp_normalized = time_stamp - data[0]["data"]["unix"]
                 self.data.append(data_thing)
                 self.data[i]["unix"] = time_stamp_normalized
+                times.append(time_stamp_normalized)
             
+            self.input_start_frame.config(to=max(times))
             self.update_export_frame()
         else:
             print("Invalid file. Please try again.")
+        self.telem_dropdown_changed() # refresh graph if applicable
     
     
     def update_export_frame(self):
@@ -754,7 +758,7 @@ class DeviceApp(tk.Tk):
         self.telem_frame.update_idletasks()
     
     
-    def telem_dropdown_changed(self, event):
+    def telem_dropdown_changed(self, event=None):
         new_val = self.telem_dropdown.get()
         print(f"the new val is {new_val}")
         data_key = REVERSE_TELEM_DATA_KEYS.get(new_val)
@@ -764,14 +768,27 @@ class DeviceApp(tk.Tk):
         if self.canvas is not None:
             self.canvas.destroy(plt)
         
+        input_start_frame = 0
+        try:
+            input_start_frame = int(self.input_start_frame.get())
+        except:
+            print("Please input a valid number.")
+        
         ydata = [dp[data_key]
                     for dp in self.data
                     if data_key in dp]
         xdata = [i for i in range(len(ydata))]
         if self.data[0].get("unix") is not None:
             xdata = [dp["unix"] for dp in self.data]
+        actual_xdata = []
+        actual_ydata = []
+        for x, y in zip(xdata, ydata):
+            if (x >= input_start_frame):
+                actual_xdata.append(x)
+                actual_ydata.append(y)
+
         
-        new_canvas = Canvas(plt, self.telem_frame, xdata, ydata, **TELEM_DATA_KEYS[data_key])
+        new_canvas = Canvas(plt, self.telem_frame, actual_xdata, actual_ydata, **TELEM_DATA_KEYS[data_key])
         new_canvas.plot(plt)
         self.canvas = new_canvas
         
@@ -842,7 +859,7 @@ class DeviceApp(tk.Tk):
         # Opens a file dialog and captures the selected path
         file_path = tk.filedialog.askopenfilename(
             title="Select a file",
-            filetypes=[("Text files", "*.txt"), ("Telem files", "*.telem"), ("All files", "*.*")]
+            filetypes=[("Telem Files", "*.telem *.txt"), ("All files", "*.*")]
         )
         if file_path:
             print(f"Selected file: {file_path}")

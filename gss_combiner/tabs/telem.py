@@ -21,6 +21,10 @@ from util.canvas import TELEM_DATA_KEYS, REVERSE_TELEM_DATA_KEYS
 def _build_telem_tab(self, parent, name):
     ttk.Label(parent, text="Telemetry", font=("Helvetica", 14)).pack()
     ttk.Button(parent, text="Upload File", command=self.open_input_file).pack()
+    ttk.Label(parent, text="Start value:").pack()
+    self.input_start_frame = ttk.Spinbox(parent, from_=0, to=10000, command=self.telem_dropdown_changed, increment=100)
+    self.input_start_frame.pack()
+
 
     self.telem_frame = ttk.Frame(parent)
     self.telem_frame.pack(expand=True)
