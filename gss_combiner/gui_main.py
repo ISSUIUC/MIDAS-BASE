@@ -21,6 +21,8 @@ from tabs.connect import _build_connect_tab
 from tabs.ejection_test import _build_ejection_test_tab
 from tabs.telem import _build_telem_tab
 from tabs.export import _build_export_tab
+from tabs.home import _build_home_tab
+import webbrowser
 
 def get_feather_duo_ports():
     """
@@ -149,7 +151,6 @@ class DeviceApp(tk.Tk):
             try:
                 while device.pipe_conn.poll():
                     msg = device.pipe_conn.recv()
-                    # print("MSG RECV: ", msg)
                     if msg.startswith("REPORT_OK:"):
                         ip = msg[10:]
                         device.stat = "ONLINE"
@@ -160,6 +161,18 @@ class DeviceApp(tk.Tk):
                         device.cleanup()
                         print(f"[!] Process {device.get_port()} Triggering a device cleanup:")
                         continue
+
+                    if msg.startswith("[TO MIDAS]"):
+                        self._last_cmd = msg[11:].strip()
+
+                    elif msg.startswith("[F]"):
+
+                        val = msg[3:].strip() #the stupid F bro i swear, ts was breaking everything
+
+                        self.parser_midas(self._last_cmd, val)
+
+                        self._last_cmd = None
+
                     device.add_to_stdout(msg)
             except:
                 print(f"[{device.get_port()}] Detected an unexpected pipe closure, but process isn't cleaned up!")
@@ -175,6 +188,39 @@ class DeviceApp(tk.Tk):
 
 
         self.after(50, self.update_stdouts)
+
+
+    def parser_midas(self, cmd, val):
+
+        for unit in [" MHz", " m/s", " ms", " m", " degrees"]:
+            val = val.replace(unit, "")
+        val = val.strip()
+
+        if "(true)" in val:
+            val = True
+        elif "(false)" in val:
+            val = False
+
+        if cmd == "serial get":
+            self.serial_no.set(val)
+        elif cmd == "frequency get":
+            self.midas_telem_freq.set(val)
+        elif cmd == "fsm threshold CRUISE_LOCKOUT_EN":
+            self.cruise_lockout.set(val)
+        elif cmd == "fsm threshold MAIN_ALT":
+            self.main_alt.set(val)
+        elif cmd == "fsm threshold PYRO_FIRE_T":
+            self.pyro_fire_t.set(val)
+
+        elif cmd.startswith("fsm ") and len(cmd.split()) == 3:
+
+            fsm, ch, field = cmd.split()
+
+            self.channel_entries_data[ch][field] = val
+
+            if self.selected_channel.get() == ch:
+                self.load_channel(ch)
+
 
     def update_device_list(self):
         # Clear treeview
@@ -233,7 +279,6 @@ class DeviceApp(tk.Tk):
         # Default to MIDAS BASE
         self.notebook.select(home_tab)
 
-        self._build_poop(home_tab, "HOME")
 
         _build_connect_tab(self, connect_tab, devices)
         _build_config_tab(self, config_tab)
@@ -241,20 +286,114 @@ class DeviceApp(tk.Tk):
         _build_ejection_test_tab(self, test_tab, "TEST")
         _build_telem_tab(self, telem_tab, "TELEM")
         _build_export_tab(self, export_tab, "EXPORT")
+        _build_home_tab(self, home_tab, devices)
 
     def _build_poop(self, parent, name):
         ttk.Label(parent, text=f"{name} Temporary", font=("Helvetica", 14)).pack(expand=True)
 
+    channels = ["A", "B", "C", "D"]
+    fields = [
+        "ENABLE",
+        "FSM_TRIGGER",
+        "DELAY",
+        "MAX_TILT",
+        "AFTER_MOTOR",
+        "LAUNCH_T_GT",
+        "LAUNCH_T_LT",
+        "VX_MIN",
+        "VX_MAX"
+    ]
+
     def flash_midas(self):
-        print("Flashing")
+        target_device = get_device(self.selected_device)
+
+        if not target_device or not target_device.pipe_conn:
+            print("No device connected")
+            return
+
+        target_device.pipe_conn.send("echo 0\n")
+
+        cruise_lockout, main_alt, pyro_fire_t, serial_no, midas_telem_freq = self.get_globals()
+        cruise_lockout_num = 0
+        if cruise_lockout:
+            cruise_lockout_num = 1
+
+        #GLOBALS
+        target_device.pipe_conn.send(f"serial set {serial_no}\n")
+        time.sleep(.2)
+        #print(f"serial set {serial_no}\n")
+
+
+        target_device.pipe_conn.send(f"frequency set {midas_telem_freq}\n")
+        time.sleep(.2)
+        #print(f"frequency set {midas_telem_freq}\n")
+
+        target_device.pipe_conn.send(f"fsm threshold CRUISE_LOCKOUT_EN {cruise_lockout_num}\n")
+        # time.sleep(.2)
+        #print(f"fsm threshold CRUISE_LOCKOUT_EN {cruise_lockout_num}\n")
+
+        target_device.pipe_conn.send(f"fsm threshold MAIN_ALT {main_alt}\n")
+        time.sleep(.2)
+        #print(f"fsm threshold MAIN_ALT {main_alt}\n")
+
+        target_device.pipe_conn.send(f"fsm threshold PYRO_FIRE_T {pyro_fire_t}\n")
+        time.sleep(.2)
+        #print(f"fsm threshold MAIN_ALT {pyro_fire_t}\n")
+
+        # CHANNELS
+        
+
+        for ch in self.channels:
+            for field in self.fields:
+                data = self.channel_entries_data[ch]
+
+                varnum = 0
+                if field == "ENABLE":
+                    if data[field]:
+                        varnum = 1
+                    cmd = f"fsm {ch} {field} {varnum}\n"
+                else:
+                    cmd = f"fsm {ch} {field} {data[field]}\n"
+                #print(cmd)
+                target_device.pipe_conn.send(cmd)
+                time.sleep(.2)
+
+
 
     def load_midas(self):
+        target_device = get_device(self.selected_device)
 
-        self.__serial.write("LOAD\n".encode())
-        time.sleep(0.5)
-        data = self.__serial.read_all().decode().splitlines()
-        for line in data:
-            print(f"[{self.__port}] {line}")
+        if not target_device or not target_device.pipe_conn:
+            print("No device connected")
+            return
+
+        target_device.pipe_conn.send("echo 0\n")
+
+        #GLOBALS
+        target_device.pipe_conn.send("serial get\n")
+        time.sleep(.2)
+
+        target_device.pipe_conn.send("frequency get\n")
+        time.sleep(.2)
+
+        target_device.pipe_conn.send("fsm threshold CRUISE_LOCKOUT_EN\n")
+        time.sleep(.2)
+
+        target_device.pipe_conn.send("fsm threshold MAIN_ALT\n")
+        time.sleep(.2)
+
+        target_device.pipe_conn.send("fsm threshold PYRO_FIRE_T\n")
+        time.sleep(.2)
+
+        # CHANNELS
+        
+
+        for ch in self.channels:
+            for field in self.fields:
+                cmd = f"fsm {ch} {field}\n"
+                target_device.pipe_conn.send(cmd)
+                time.sleep(.2)
+
 
     def on_select(self, event):
         selected = self.tree.selection()
@@ -308,6 +447,26 @@ class DeviceApp(tk.Tk):
                     self.ip_entry.delete(0, tk.END) # Clear existing content
                     self.ip_entry.insert(0, dev_ip)
                     self.stage_sel.set(_device.stage_sel)
+
+
+    def make_ground_station_thread(self):
+        self.ground_station_thread = threading.Thread(group=None, target=self.start_ground_station)
+        self.ground_station_thread.start()
+
+    def start_ground_station(self):
+        # input("Open Docker Desktop and then press enter ")
+        print("Trying to start Ground Station Docker Container...")
+        current_path = Path(__file__).resolve().parent / "GroundStation" / "compose.yml"
+        with subprocess.Popen(["docker-compose", "-f", current_path.absolute(), "up", "--build"], stdout=subprocess.PIPE, text=True, bufsize=1, stderr=subprocess.STDOUT) as proc:
+            opened_browser = False
+            for line in proc.stdout:
+                print(line)
+                if "127.0.0.1" in str(line) and not(opened_browser):
+                    print("Opening localhost")
+                    webbrowser.open("http://localhost")
+
+        # os.system(f"docker-compose -f {current_path.absolute()} up --build")
+
 
     def perform_action(self):
         global devices

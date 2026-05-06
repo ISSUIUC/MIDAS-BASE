@@ -389,7 +389,7 @@ class Midas_Standalone():
             if self.__comport.in_waiting:
                 try:
                     line = self.__comport.readline().decode("ascii", errors="replace").strip()
-                    if line:
+                    if line and "done" not in line:
                         print(f"[F] {line}", flush=True)
                 except Exception as e:
                     print(f"[MIDAS] Read error: {e}", flush=True)
@@ -451,7 +451,6 @@ def parse_params(arguments):
     return source, should_log, ip, args.port
 
 if __name__ == "__main__":
-
     stage, should_log, ip, port = parse_params(sys.argv[1:])
 
     if (stage == "Midas"):
