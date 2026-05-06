@@ -10,7 +10,7 @@ from serial.tools.list_ports import comports
 import time
 import json
 import datetime
-
+from hw.hwtypes import HwTypes
 import threading
 import sys
 import queue
@@ -25,12 +25,12 @@ def _build_config_tab(self, parent):
 
         ttk.Label(selector_frame, text="Board Type:", font=("Helvetica", 12)).pack(side="left")
 
-        self.board_type = tk.StringVar(value="MIDAS")
+        self.board_type = tk.StringVar(value=HwTypes.get_hardwares()[0].value)
 
         board_dropdown = ttk.Combobox(
             selector_frame,
             textvariable=self.board_type,
-            values=["MIDAS", "Feather Duo"],
+            values=[e.value for e in HwTypes.get_hardwares()],
             state="readonly",
             width=15
         )
@@ -192,8 +192,8 @@ def _build_config_tab(self, parent):
         )
         load_btn.pack(side="left", pady=20)
         
-        self.config_views["MIDAS"] = midas_frame
-        self.config_views["Feather Duo"] = feather_frame
+        self.config_views[HwTypes.MIDAS_MINI.value] = midas_frame
+        self.config_views[HwTypes.FEATHER_DUO.value] = feather_frame
 
         # Place all frames in same spot
         for frame in self.config_views.values():

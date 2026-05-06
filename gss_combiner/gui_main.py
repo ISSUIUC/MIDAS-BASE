@@ -5,13 +5,11 @@ import subprocess
 from pathlib import Path
 import sys
 import os
-import serial
 from serial.tools.list_ports import comports
 import time
-import json
-import datetime
 from util.feather_subprocess import FeatherSubprocess
 from util.commander import CommandSender
+from hw.hwtypes import HwTypes
 
 import threading
 import sys
@@ -341,8 +339,6 @@ class DeviceApp(tk.Tk):
         #print(f"fsm threshold MAIN_ALT {pyro_fire_t}\n")
 
         # CHANNELS
-        
-
         for ch in self.channels:
             for field in self.fields:
                 data = self.channel_entries_data[ch]
@@ -421,20 +417,20 @@ class DeviceApp(tk.Tk):
             _device = get_device(self.selected_device)
 
             if not is_same_select:
-                if _device.type == "FEATHER M0":
+                if _device.type == HwTypes.MIDAS_MINI:
                     self.radio1.config(state="normal")
                     self.radio2.config(state="normal")
                     self.radio3.config(state="disabled")
                     self.mini.config(state="disabled")
                     self.stage_sel.set("sustainer")
 
-                if _device.type == "FEATHER DUO":
+                if _device.type == HwTypes.FEATHER_DUO:
                     self.radio1.config(state="disabled")
                     self.radio2.config(state="disabled")
                     self.radio3.config(state="normal")
                     self.stage_sel.set("duo")
 
-                if _device.type == "MIDAS MINI":
+                if _device.type == HwTypes.MIDAS_MINI:
                     self.radio1.config(state="disabled")
                     self.radio2.config(state="disabled")
                     self.radio3.config(state="disabled")
