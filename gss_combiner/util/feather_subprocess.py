@@ -88,6 +88,9 @@ class FeatherSubprocess:
 
             self.__serial.write("IDENT\n".encode())
 
+            #How to send a shell command to device without first being connected to it. Lets try!!
+            self.__serial.write("IDENT\r".encode()) #Maybe this could work im not sure!!
+
             time.sleep(0.5)
             data = self.__serial.read_all().decode().splitlines()
             for line in data:

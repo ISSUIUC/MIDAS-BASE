@@ -10,7 +10,7 @@ import time
 from util.feather_subprocess import FeatherSubprocess
 from util.commander import CommandSender
 from hw.hwtypes import HwType
-
+import serial
 import threading
 import sys
 import queue
@@ -219,6 +219,12 @@ class DeviceApp(tk.Tk):
             if self.selected_channel.get() == ch:
                 self.load_channel(ch)
 
+        elif cmd.startswith("serial ") and cmd.endswith(" get"):
+            # e.g. cmd = "serial 0 get", val = 008
+            self._radio_serials = getattr(self, '_radio_serials', {})
+            self._radio_serials[cmd.split()[1]] = val
+            self._ejection_stage_dropdown['values'] = list(self._radio_serials.values())
+
 
     def update_device_list(self):
         # Clear treeview
@@ -281,7 +287,7 @@ class DeviceApp(tk.Tk):
         _build_connect_tab(self, connect_tab, devices)
         _build_config_tab(self, config_tab)
         
-        _build_ejection_test_tab(self, test_tab, "TEST")
+        _build_ejection_test_tab(self, test_tab, "TEST", devices)
         _build_telem_tab(self, telem_tab, "TELEM")
         _build_export_tab(self, export_tab, "EXPORT")
         _build_home_tab(self, home_tab, devices)
@@ -515,6 +521,9 @@ class DeviceApp(tk.Tk):
             print("Opening terminal window")
             self.open_terminal_window(self.selected_device)
             # Add real logic here
+
+#def set_terminal_output(self, outpt):
+       # self.__terminal_outputs.append(outpt)
 
     def open_terminal_window(self, device):
         global devices
