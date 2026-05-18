@@ -1,5 +1,6 @@
 import time
 import serial
+from hw.hwtypes import HwType
 
 def is_port_taken(port):
     """
@@ -30,7 +31,7 @@ class FeatherSubprocess:
         self.__serial = None
         self.meta: str = ""
         self.stat: str = "NONE"
-        self.type: str = "UNKNOWN"
+        self.type: HwType = "UNKNOWN"
         self.__is_active = False
         self.proc = None
         self.pipe_conn = None
@@ -95,21 +96,21 @@ class FeatherSubprocess:
                     ident_value = line[15:]
                     
                     if ident_value == "FEATHER_M0":
-                        self.type = "FEATHER M0"
+                        self.type = HwType.FEATHER_M0
                         self.stat = "OFFLINE"
                         self.__serial.close()
                         self.__serial = None
                         return
                     
                     if ident_value == "FEATHER_DUO":
-                        self.type = "FEATHER DUO"
+                        self.type = HwType.FEATHER_DUO
                         self.stat = "OFFLINE"
                         self.__serial.close()
                         self.__serial = None
                         return
                     
                     if ident_value == "MIDAS_MINI":
-                        self.type = "MIDAS MINI"
+                        self.type = HwType.MIDAS_MINI
                         self.stat = "OFFLINE"
                         return
             
@@ -138,8 +139,6 @@ class FeatherSubprocess:
         if self.pipe_conn:
             self.pipe_conn.close()
         self.pipe_conn = None
-
-
 
     def get_port(self):
         return self.__port
