@@ -5,9 +5,12 @@ import subprocess
 from pathlib import Path
 import sys
 import os
-import serial
 from serial.tools.list_ports import comports
 import time
+from util.feather_subprocess import FeatherSubprocess
+from util.commander import CommandSender
+from hw.hwtypes import HwType
+import serial
 import json
 import datetime
 import csv
@@ -37,161 +40,6 @@ def get_feather_duo_ports():
     """
     FEATHER_DUO_PID = 4097
     return [port.device for port in comports() if port.pid == FEATHER_DUO_PID]
-
-def is_port_taken(port):
-    """
-    Checks if a serial port is currently in use.
-
-    Args:
-        port (str): The name of the serial port to check (e.g., 'COM3' or '/dev/ttyUSB0').
-
-    Returns:
-        bool: True if the port is taken, False otherwise.
-    """
-    try:
-        ser = serial.Serial()
-        ser.port = port
-        ser.write_timeout = 1
-        ser.timeout = 2
-        ser.dtr = False
-        ser.rts = False
-        ser.open()
-        return False, ser  # Port is free
-    except serial.SerialException as e:
-        return True, None
-
-
-class FeatherSubprocess:
-    MAXIMUM_STDOUT_LINES = 300
-    def __init__(self, port):
-        self.__port: str = port
-        self.__serial = None
-        self.meta: str = ""
-        self.stat: str = "NONE"
-        self.type: str = "UNKNOWN"
-        self.__is_active = False
-        self.proc = None
-        self.pipe_conn = None
-        self.__ip = ""
-        self.should_log = False
-        self.stage_sel = ""
-
-        self.has_errored = False
-
-        self.main_stdout = []
-        self.__terminal_outputs = []
-
-        print(f"Initializing new device on {self.__port}")
-        self.check_type()
-    
-    def get_stat(self):
-        return self.__ip, self.should_log
-
-    def set_terminal_output(self, outpt):
-        self.__terminal_outputs.append(outpt)
-
-    def set_ip(self, ip):
-        self.__ip = ip
-
-    def add_to_stdout(self, msg):
-        self.main_stdout.append(msg)
-
-        if len(self.main_stdout) > FeatherSubprocess.MAXIMUM_STDOUT_LINES:
-            self.main_stdout = self.main_stdout[1:]
-
-        for outpt in self.__terminal_outputs:
-            outpt.config(state="normal")
-            msg_str: str = str(msg)
-            if msg_str.startswith("[F]"):
-                outpt.insert("end", f"{msg_str}\n", "raw_out")
-            else:
-                outpt.insert("end", f"{msg_str}\n")
-            outpt.config(state="disabled")
-            outpt.see("end")
-
-    def check_type(self):
-        print("Check type invoked on ", self.__port)
-        if self.__is_active:
-            return # This will be taken over by another process already 
-        
-        port_taken, self.__serial = is_port_taken(self.__port)
-        if port_taken:
-            self.stat = "NONE"
-            self.type = "UNKNOWN"
-            print("Sad!")
-        else:
-            self.stat = "IDENTIFYING..."
-            self.type = "UNKNOWN"
-
-            self.__serial.write("IDENT\n".encode())
-
-            time.sleep(0.5)
-            data = self.__serial.read_all().decode().splitlines()
-            for line in data:
-                print(f"[{self.__port}] {line}")
-                if line.startswith("IDENT_RESPONSE:"):
-                    ident_value = line[15:]
-                    
-                    if ident_value == "FEATHER_M0":
-                        self.type = "FEATHER M0"
-                        self.stat = "OFFLINE"
-                        self.__serial.close()
-                        self.__serial = None
-                        return
-                    
-                    if ident_value == "FEATHER_DUO":
-                        self.type = "FEATHER DUO"
-                        self.stat = "OFFLINE"
-                        self.__serial.close()
-                        self.__serial = None
-                        return
-                    
-                    if ident_value == "MIDAS_MINI":
-                        self.type = "MIDAS MINI"
-                        self.stat = "OFFLINE"
-                        return
-            
-            self.type = "UNKNOWN"
-            self.stat = "NONE"
-            self.__serial.close()
-            self.__serial = None
-
-    def is_online(self):
-        return self.stat.lower() == "online"
-    
-    def clean_visual(self):
-        self.set_ip("")
-        self.stat = "OFFLINE"
-        self.proc = None
-        self.main_stdout = []
-
-
-    def cleanup(self):
-        print(f"[{self.__port}] FeatherSubprocess.cleanup invoked!")
-        if self.pipe_conn:
-            self.pipe_conn.send("kill\n")
-            
-        self.clean_visual()
-
-        if self.pipe_conn:
-            self.pipe_conn.close()
-        self.pipe_conn = None
-
-
-
-    def get_port(self):
-        return self.__port
-    
-    def get_serial(self):
-        return self.__serial
-
-    def reset(self):
-        if self.__serial:
-            self.__serial.close()
-
-
-    def to_dict(self):
-        return {"name": self.type, "port": self.__port, "status": self.stat, "server": self.__ip, "meta": self.meta}
 
 
 devices: list[FeatherSubprocess] = [] #check if empty list works
@@ -275,6 +123,7 @@ class DeviceApp(tk.Tk):
 
         # CONFIG state — which device is selected for config
         self.cfg_selected_port = None
+        self.command_sender = CommandSender(devices)
 
         self.create_widgets()
 
@@ -383,6 +232,12 @@ class DeviceApp(tk.Tk):
             if self.selected_channel.get() == ch:
                 self.load_channel(ch)
 
+        elif cmd.startswith("serial ") and cmd.endswith(" get"):
+            # e.g. cmd = "serial 0 get", val = 008
+            self._radio_serials = getattr(self, '_radio_serials', {})
+            self._radio_serials[cmd.split()[1]] = val
+            self._ejection_stage_dropdown['values'] = list(self._radio_serials.values())
+
 
     def update_device_list(self):
         # Clear treeview
@@ -445,7 +300,7 @@ class DeviceApp(tk.Tk):
         _build_connect_tab(self, connect_tab, devices)
         _build_config_tab(self, config_tab)
         
-        _build_ejection_test_tab(self, test_tab, "TEST")
+        _build_ejection_test_tab(self, test_tab, "TEST", devices)
         _build_telem_tab(self, telem_tab, "TELEM")
         _build_export_tab(self, export_tab)
         _build_home_tab(self, home_tab, devices)
@@ -503,8 +358,6 @@ class DeviceApp(tk.Tk):
         #print(f"fsm threshold MAIN_ALT {pyro_fire_t}\n")
 
         # CHANNELS
-        
-
         for ch in self.channels:
             for field in self.fields:
                 data = self.channel_entries_data[ch]
@@ -583,20 +436,20 @@ class DeviceApp(tk.Tk):
             _device = get_device(self.selected_device)
 
             if not is_same_select:
-                if _device.type == "FEATHER M0":
+                if _device.type == HwType.MIDAS_MINI:
                     self.radio1.config(state="normal")
                     self.radio2.config(state="normal")
                     self.radio3.config(state="disabled")
                     self.mini.config(state="disabled")
                     self.stage_sel.set("sustainer")
 
-                if _device.type == "FEATHER DUO":
+                if _device.type == HwType.FEATHER_DUO:
                     self.radio1.config(state="disabled")
                     self.radio2.config(state="disabled")
                     self.radio3.config(state="normal")
                     self.stage_sel.set("duo")
 
-                if _device.type == "MIDAS MINI":
+                if _device.type == HwType.MIDAS_MINI:
                     self.radio1.config(state="disabled")
                     self.radio2.config(state="disabled")
                     self.radio3.config(state="disabled")
@@ -795,6 +648,9 @@ class DeviceApp(tk.Tk):
         
 
 
+
+#def set_terminal_output(self, outpt):
+       # self.__terminal_outputs.append(outpt)
 
     def open_terminal_window(self, device):
         global devices

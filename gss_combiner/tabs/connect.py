@@ -117,9 +117,6 @@ def _build_connect_tab(self, parent, devices):
         self.online_label = ttk.Label(control_frame, text=f"Online: {online_count}")
         self.online_label.pack(anchor="w")
 
-        
-
-
         def deselect(event=None):
             self.selected_device = None
             self.tree.selection_remove(self.tree.selection())
