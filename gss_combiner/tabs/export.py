@@ -15,5 +15,13 @@ import threading
 import sys
 import queue
 
-def _build_export_tab(self, parent, name):
-    ttk.Label(parent, text=f"{name} Temporary", font=("Helvetica", 14)).pack(expand=True)
+def _build_export_tab(self, parent):
+    self.export_frame = ttk.Frame(parent)
+    self.export_frame.pack()
+
+    ttk.Label(self.export_frame, text="Export to CSV", font=("Helvetica", 14)).pack()
+    self.no_input_file_label = ttk.Label(self.export_frame, text="Please upload a file in TELEM tab")
+    self.no_input_file_label.pack()
+
+    self.export_file_button = ttk.Button(self.export_frame, text="Export to file", state="disabled", command=self.export_data)
+    self.export_file_button.pack()

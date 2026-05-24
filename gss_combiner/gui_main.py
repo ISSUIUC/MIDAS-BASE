@@ -10,6 +10,7 @@ from serial.tools.list_ports import comports
 import time
 import json
 import datetime
+import csv
 from pathlib import Path
 import threading
 import sys
@@ -19,6 +20,11 @@ from tabs.connect import _build_connect_tab
 from tabs.ejection_test import _build_ejection_test_tab
 from tabs.telem import _build_telem_tab
 from tabs.export import _build_export_tab
+from tkinter import filedialog
+from matplotlib import pyplot as plt
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+from util.canvas import Canvas, TELEM_DATA_KEYS, REVERSE_TELEM_DATA_KEYS
+
 from tabs.home import _build_home_tab
 import webbrowser
 
@@ -258,6 +264,10 @@ class DeviceApp(tk.Tk):
         self.selected_device = None
         self.windows = []
 
+        # Graphing stuff
+        self.input_file = None
+        self.canvas = None
+
         # MIDAS BASE state
         self.gss_running = False
         self.gss_uptime_start = None
@@ -437,7 +447,7 @@ class DeviceApp(tk.Tk):
         
         _build_ejection_test_tab(self, test_tab, "TEST")
         _build_telem_tab(self, telem_tab, "TELEM")
-        _build_export_tab(self, export_tab, "EXPORT")
+        _build_export_tab(self, export_tab)
         _build_home_tab(self, home_tab, devices)
 
     def _build_poop(self, parent, name):
@@ -671,6 +681,120 @@ class DeviceApp(tk.Tk):
             print("Opening terminal window")
             self.open_terminal_window(self.selected_device)
             # Add real logic here
+    
+    def open_input_file(self):
+        self.input_file = self.upload_file()
+        if not self.input_file:
+            return
+        
+        
+        self.input_file_thing.config(text=f"Uploaded file: {self.input_file}")
+        data = []
+        if self.input_file.endswith(".txt"):
+            with open(self.input_file, "r") as f:
+                for line in f:
+                    try:
+                        clean_line = line[6:].replace("'", '"')
+                        data.append(json.loads(clean_line))
+                    except:
+                        continue
+            plt.cla()
+            
+            data = [dp["value"] 
+                    for dp in data
+                    if "value" in dp]
+            
+            self.data = data
+            # Get the value from each data point
+            self.update_export_frame()
+            self.input_start_frame.config(to=len(self.data))
+        elif self.input_file.endswith(".telem"):
+            with open(self.input_file, "r") as f:
+                for line in f:
+                    try:
+                        data.append(json.loads(line))
+                    except:
+                        continue
+            plt.cla()
+            self.data = []
+            times = []
+            for i, dp in enumerate(data):
+                data_thing = dp["data"]["value"]
+                time_stamp = dp["data"]["unix"]
+                time_stamp_normalized = time_stamp - data[0]["data"]["unix"]
+                self.data.append(data_thing)
+                self.data[i]["unix"] = time_stamp_normalized
+                times.append(time_stamp_normalized)
+            
+            self.input_start_frame.config(to=max(times))
+            self.update_export_frame()
+        else:
+            print("Invalid file. Please try again.")
+        self.telem_dropdown_changed() # refresh graph if applicable
+    
+    
+    def update_export_frame(self):
+        if self.input_file:
+            self.export_file_button.configure(state="normal")
+            self.no_input_file_label.configure(text="Export your file here")
+
+
+        
+
+
+    def export_data(self):
+        filename = filedialog.asksaveasfilename()
+        with open(filename, "w", newline="") as f:
+            csvwriter = csv.writer(f)
+            headers = ["Time"] + list(self.data[0].keys())
+            csvwriter.writerow(headers)
+            for i, dp in enumerate(self.data):
+                row = []
+                row.append(i)
+                for header in headers[1:]:
+                    row.append(dp.get(header) if dp.get(header) is not None else "")
+                csvwriter.writerow(row)
+
+        self.telem_frame.update_idletasks()
+    
+    
+    def telem_dropdown_changed(self, event=None):
+        new_val = self.telem_dropdown.get()
+        print(f"the new val is {new_val}")
+        data_key = REVERSE_TELEM_DATA_KEYS.get(new_val)
+        if data_key is None:
+            return
+        
+        if self.canvas is not None:
+            self.canvas.destroy(plt)
+        
+        input_start_frame = 0
+        try:
+            input_start_frame = int(self.input_start_frame.get())
+        except:
+            print("Please input a valid number.")
+        
+        ydata = [dp[data_key]
+                    for dp in self.data
+                    if data_key in dp]
+        xdata = [i for i in range(len(ydata))]
+        if self.data[0].get("unix") is not None:
+            xdata = [dp["unix"] for dp in self.data]
+        actual_xdata = []
+        actual_ydata = []
+        for x, y in zip(xdata, ydata):
+            if (x >= input_start_frame):
+                actual_xdata.append(x)
+                actual_ydata.append(y)
+
+        
+        new_canvas = Canvas(plt, self.telem_frame, actual_xdata, actual_ydata, **TELEM_DATA_KEYS[data_key])
+        new_canvas.plot(plt)
+        self.canvas = new_canvas
+        
+        
+
+
 
     def open_terminal_window(self, device):
         global devices
@@ -731,6 +855,15 @@ class DeviceApp(tk.Tk):
         submit_btn.pack(side="right", padx=5)
 
         input_entry.focus_set()
+    def upload_file(self):
+        # Opens a file dialog and captures the selected path
+        file_path = tk.filedialog.askopenfilename(
+            title="Select a file",
+            filetypes=[("Telem Files", "*.telem *.txt"), ("All files", "*.*")]
+        )
+        if file_path:
+            print(f"Selected file: {file_path}")
+            return file_path
 
 
 if __name__ == "__main__":
@@ -738,3 +871,4 @@ if __name__ == "__main__":
     app.after(1000, app.update_devices)
     app.after(50, app.update_stdouts)
     app.mainloop()
+
