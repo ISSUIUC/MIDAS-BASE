@@ -38,7 +38,7 @@ def _build_connect_tab(self, parent, devices):
         for col in columns:
             self.tree.heading(col, text=col)
             self.tree.column(col, width=120)
-
+        # print(f"Devices: {devices}")
         for _device in devices:
             device = _device.to_dict()
 
@@ -75,8 +75,8 @@ def _build_connect_tab(self, parent, devices):
         self.radio3 = ttk.Radiobutton(control_frame, text="Duo", variable=self.stage_sel, value="duo")
         self.radio3.pack()
 
-        self.mini = ttk.Radiobutton(control_frame, text="Midas", variable=self.stage_sel, value="midas")
-        self.mini.pack()
+        # self.mini = ttk.Radiobutton(control_frame, text="Midas", variable=self.stage_sel, value="midas")
+        # self.mini.pack()
 
         self.do_log = tk.BooleanVar(value=True)
 

@@ -28,6 +28,7 @@ from util.canvas import Canvas, TELEM_DATA_KEYS, REVERSE_TELEM_DATA_KEYS
 from tabs.home import _build_home_tab
 import webbrowser
 
+
 def get_feather_duo_ports():
     """
     Gets the ports of connected Feather Duos
@@ -49,15 +50,17 @@ def is_port_taken(port):
         bool: True if the port is taken, False otherwise.
     """
     try:
-        ser = serial.Serial()
-        ser.port = port
-        ser.write_timeout = 1
-        ser.timeout = 2
-        ser.dtr = False
-        ser.rts = False
-        ser.open()
+        ser = serial.Serial(port, write_timeout=1, timeout=2)
+        # ser.port = port
+        # ser.write_timeout = 1
+        # ser.timeout = 2
+        # ser.dtr = False
+        # ser.rts = False
+        # ser.open()
+        # print(f"Baud rate: {ser.baudrate}")
         return False, ser  # Port is free
-    except serial.SerialException as e:
+    except Exception as e:
+        print("Error: ", e)
         return True, None
 
 
@@ -111,8 +114,8 @@ class FeatherSubprocess:
 
     def check_type(self):
         print("Check type invoked on ", self.__port)
-        if self.__is_active:
-            return # This will be taken over by another process already 
+        # if self.__is_active:
+        #     return # This will be taken over by another process already 
         
         port_taken, self.__serial = is_port_taken(self.__port)
         if port_taken:
@@ -120,12 +123,14 @@ class FeatherSubprocess:
             self.type = "UNKNOWN"
             print("Sad!")
         else:
+
             self.stat = "IDENTIFYING..."
             self.type = "UNKNOWN"
 
-            self.__serial.write("IDENT\n".encode())
+            self.__serial.write("ident\n".encode())
 
             time.sleep(0.5)
+            print("doing things")
             data = self.__serial.read_all().decode().splitlines()
             for line in data:
                 print(f"[{self.__port}] {line}")
@@ -282,7 +287,6 @@ class DeviceApp(tk.Tk):
         global devices
         ports = get_feather_duo_ports()
         existing_ports = [d.get_port() for d in devices]
-
         # Remove old ports that aren't connected
         for d in devices:
             if d.get_port() not in ports:
@@ -417,6 +421,7 @@ class DeviceApp(tk.Tk):
         self.total_label.config(text=f"Total Devices: {len(devices)}")
         online_count = sum(1 for d in devices if d.to_dict()["status"].lower() == "online")
         self.online_label.config(text=f"Online: {online_count}")
+        # print([d.to_dict() for d in devices])
 
     def create_widgets(self):
         # Menu Bar
