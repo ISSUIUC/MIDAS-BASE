@@ -1,0 +1,11 @@
+.venv/
+
+.uv/
+
+dist/
+build/
+*.egg-info/
+
+__pycache__/
+
+outputs/
