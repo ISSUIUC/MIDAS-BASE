@@ -92,7 +92,7 @@ def _build_ejection_test_tab(self, parent, name, devices):
 
 
 def refresh_serials(self, devices):
-    from util.feather_subprocess import FeatherSubprocess
+    from midas_base.gss_combiner.util.feather_subprocess import FeatherSubprocess
     
     # Find the connected Feather Duo device
     target_device = None

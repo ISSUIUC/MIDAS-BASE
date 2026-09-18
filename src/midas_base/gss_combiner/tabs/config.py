@@ -2,7 +2,7 @@ import tkinter as tk
 from tkinter import ttk
 from pathlib import Path
 from serial.tools.list_ports import comports
-from hw.hwtypes import HwType
+from midas_base.gss_combiner.hw.hwtypes import HwType
 
 def add_row(parent, label):
     frame = ttk.Frame(parent)

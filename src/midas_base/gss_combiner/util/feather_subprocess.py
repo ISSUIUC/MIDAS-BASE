@@ -1,6 +1,6 @@
 import time
 import serial
-from hw.hwtypes import HwType
+from midas_base.gss_combiner.hw.hwtypes import HwType
 
 def is_port_taken(port):
     """

@@ -16,7 +16,7 @@ import time
 import argparse
 
 import re
-import util.logger
+import midas_base.gss_combiner.util.logger
 
 stdin_q = queue.Queue()
 

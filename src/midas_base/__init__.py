@@ -7,9 +7,9 @@ import sys
 import os
 from serial.tools.list_ports import comports
 import time
-from util.feather_subprocess import FeatherSubprocess
-from util.commander import CommandSender
-from hw.hwtypes import HwType
+from midas_base.gss_combiner.util.feather_subprocess import FeatherSubprocess
+from midas_base.gss_combiner.util.commander import CommandSender
+from midas_base.gss_combiner.hw.hwtypes import HwType
 import serial
 import json
 import datetime
@@ -18,17 +18,17 @@ from pathlib import Path
 import threading
 import sys
 import queue
-from tabs.config import _build_config_tab
-from tabs.connect import _build_connect_tab
-from tabs.ejection_test import _build_ejection_test_tab
-from tabs.telem import _build_telem_tab
-from tabs.export import _build_export_tab
+from midas_base.gss_combiner.tabs.config import _build_config_tab
+from midas_base.gss_combiner.tabs.connect import _build_connect_tab
+from midas_base.gss_combiner.tabs.ejection_test import _build_ejection_test_tab
+from midas_base.gss_combiner.tabs.telem import _build_telem_tab
+from midas_base.gss_combiner.tabs.export import _build_export_tab
 from tkinter import filedialog
 from matplotlib import pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
-from util.canvas import Canvas, TELEM_DATA_KEYS, REVERSE_TELEM_DATA_KEYS
+from midas_base.gss_combiner.util.canvas import Canvas, TELEM_DATA_KEYS, REVERSE_TELEM_DATA_KEYS
 
-from tabs.home import _build_home_tab
+from midas_base.gss_combiner.tabs.home import _build_home_tab
 import webbrowser
 
 def get_feather_duo_ports():
@@ -721,8 +721,7 @@ class DeviceApp(tk.Tk):
             print(f"Selected file: {file_path}")
             return file_path
 
-
-if __name__ == "__main__":
+def main() -> None:
     app = DeviceApp()
     app.after(1000, app.update_devices)
     app.after(50, app.update_stdouts)

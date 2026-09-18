@@ -1,4 +1,4 @@
-from util.feather_subprocess import FeatherSubprocess
+from midas_base.gss_combiner.util.feather_subprocess import FeatherSubprocess
 """
 A class for sending commands to a specific device and stuff
 """
