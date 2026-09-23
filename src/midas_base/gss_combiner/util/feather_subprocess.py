@@ -85,37 +85,48 @@ class FeatherSubprocess:
         else:
             self.stat = "IDENTIFYING..."
             self.type = "UNKNOWN"
+            time.sleep(0.5)
 
-            self.__serial.write("IDENT\n".encode())
+            self.__serial.write("ident\n".encode())
+
+            time.sleep(0.5)
 
             #How to send a shell command to device without first being connected to it. Lets try!!
-            self.__serial.write("IDENT\r".encode()) #Maybe this could work im not sure!!
+            # self.__serial.write("ident\r".encode()) #Maybe this could work im not sure!!
 
             time.sleep(0.5)
             data = self.__serial.read_all().decode().splitlines()
-            for line in data:
-                print(f"[{self.__port}] {line}")
-                if line.startswith("IDENT_RESPONSE:"):
-                    ident_value = line[15:]
-                    
-                    if ident_value == "FEATHER_M0":
-                        self.type = HwType.FEATHER_M0
-                        self.stat = "OFFLINE"
-                        self.__serial.close()
-                        self.__serial = None
-                        return
-                    
-                    if ident_value == "FEATHER_DUO":
-                        self.type = HwType.FEATHER_DUO
-                        self.stat = "OFFLINE"
-                        self.__serial.close()
-                        self.__serial = None
-                        return
-                    
-                    if ident_value == "MIDAS_MINI":
-                        self.type = HwType.MIDAS_MINI
-                        self.stat = "OFFLINE"
-                        return
+            break_out_of_while = False
+            while not break_out_of_while:
+                for line in data:
+                    print(f"[{self.__port}] {line}")
+                    if line.startswith("IDENT_RESPONSE:"):
+                        ident_value = line[15:]
+                        
+                        if ident_value == "FEATHER_M0":
+                            self.type = HwType.FEATHER_M0
+                            self.stat = "OFFLINE"
+                            self.__serial.close()
+                            self.__serial = None
+                            return
+                        
+                        if ident_value == "FEATHER_DUO":
+                            self.type = HwType.FEATHER_DUO
+                            self.stat = "OFFLINE"
+                            self.__serial.close()
+                            self.__serial = None
+                            return
+                        
+                        if ident_value == "MIDAS_MINI":
+                            self.type = HwType.MIDAS_MINI
+                            self.stat = "OFFLINE"
+                            return
+                    elif line.startswith("<done> 3"):
+                        time.sleep(0.5)
+                        self.__serial.write("ident\n".encode())
+                        continue
+                    else:
+                        break_out_of_while = True
             
             self.type = "UNKNOWN"
             self.stat = "NONE"
@@ -156,4 +167,11 @@ class FeatherSubprocess:
 
     def to_dict(self):
         return {"name": self.type, "port": self.__port, "status": self.stat, "server": self.__ip, "meta": self.meta}
+
+    def send_serial_msg(self, msg):
+        self.__serial.write(msg)
+
+    def read_serial_lines(self):
+        data = self.__serial.read_all().decode().splitlines()
+        return data
 

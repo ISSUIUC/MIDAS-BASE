@@ -298,7 +298,7 @@ class DeviceApp(tk.Tk):
 
 
         _build_connect_tab(self, connect_tab, devices)
-        _build_config_tab(self, config_tab)
+        _build_config_tab(self, config_tab, devices)
         
         _build_ejection_test_tab(self, test_tab, "TEST", devices)
         _build_telem_tab(self, telem_tab, "TELEM")
@@ -720,6 +720,27 @@ class DeviceApp(tk.Tk):
         if file_path:
             print(f"Selected file: {file_path}")
             return file_path
+
+    def update_midas_config(self):
+        if self.selected_device is None:
+            return False
+        device = get_device(self.selected_device)
+        if device is None:
+            return False
+        device.send_serial_msg("serial get\n".encode())
+        time.sleep(0.2)
+        data = device.read_serial_lines()
+        serial_no = -1
+        for line in data:
+            try:
+                serial_no = int(line)
+            except:
+                continue
+        if serial_no == -1:
+            return
+        self.serial_no.set(str(serial_no).zfill(3))
+
+
 
 def main() -> None:
     app = DeviceApp()

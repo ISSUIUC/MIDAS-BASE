@@ -23,7 +23,7 @@ def add_row(parent, label):
     return var
 
 
-def _build_midas_tab(self, parent, view_container):
+def _build_midas_tab(self, parent, view_container, devices):
     midas_frame = ttk.Frame(view_container)
 
 
@@ -32,6 +32,14 @@ def _build_midas_tab(self, parent, view_container):
         midas_frame,
         text="MIDAS CONFIG",
         font=("Helvetica", 16, "bold")
+    ).pack(pady=10)
+
+
+    ttk.Button(
+        midas_frame,
+        text="UPDATE SERIAL NO",
+        command=self.update_midas_config
+
     ).pack(pady=10)
 
 
@@ -53,6 +61,8 @@ def _build_midas_tab(self, parent, view_container):
     self.pyro_fire_t = add_row(left_frame, "PYRO_FIRE_T (float)")
     self.serial_no = add_row(left_frame, "MIDAS Serial No")
     self.midas_telem_freq = add_row(left_frame, "MIDAS Telemetry Frequency")
+
+    
 
     # ── RIGHT SIDE (CHANNEL) ──
 
@@ -157,7 +167,7 @@ def _build_feather_duo_tab(self, parent, view_container):
 
     return feather_frame
 
-def _build_config_tab(self, parent):
+def _build_config_tab(self, parent, devices):
         container = ttk.Frame(parent)
         container.pack(fill="both", expand=True, padx=10, pady=10)
 
@@ -185,7 +195,7 @@ def _build_config_tab(self, parent):
         view_container.pack(fill="both", expand=True)
 
         # MIDAS view
-        midas_frame = _build_midas_tab(self, parent, view_container)
+        midas_frame = _build_midas_tab(self, parent, view_container, devices)
         # Feather Duo view
         feather_frame = _build_feather_duo_tab(self, parent, view_container)
 
