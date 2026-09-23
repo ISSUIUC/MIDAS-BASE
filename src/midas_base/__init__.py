@@ -721,7 +721,7 @@ class DeviceApp(tk.Tk):
             print(f"Selected file: {file_path}")
             return file_path
 
-    def update_midas_config(self):
+    def load_serial_no(self):
         if self.selected_device is None:
             return False
         device = get_device(self.selected_device)
@@ -739,6 +739,19 @@ class DeviceApp(tk.Tk):
         if serial_no == -1:
             return
         self.serial_no.set(str(serial_no).zfill(3))
+    def set_serial_no(self):
+        if self.selected_device is None:
+            return False
+        device = get_device(self.selected_device)
+        if device is None:
+            return False
+        try:
+            serial_no = int(self.serial_no.get())
+        except:
+            return False
+        device.send_serial_msg(f"serial set {serial_no}\n".encode())
+        time.sleep(0.2)
+        self.load_serial_no()
 
 
 
