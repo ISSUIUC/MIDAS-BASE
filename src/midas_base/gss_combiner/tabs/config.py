@@ -23,7 +23,7 @@ def add_row(parent, label):
     return var
 
 
-def _build_midas_tab(self, parent, view_container, devices):
+def _build_midas_tab(self, parent, view_container):
     midas_frame = ttk.Frame(view_container)
 
 
@@ -172,7 +172,7 @@ def _build_feather_duo_tab(self, parent, view_container):
 
     return feather_frame
 
-def _build_config_tab(self, parent, devices):
+def _build_config_tab(self, parent):
         container = ttk.Frame(parent)
         container.pack(fill="both", expand=True, padx=10, pady=10)
 
@@ -200,7 +200,7 @@ def _build_config_tab(self, parent, devices):
         view_container.pack(fill="both", expand=True)
 
         # MIDAS view
-        midas_frame = _build_midas_tab(self, parent, view_container, devices)
+        midas_frame = _build_midas_tab(self, parent, view_container)
         # Feather Duo view
         feather_frame = _build_feather_duo_tab(self, parent, view_container)
 
