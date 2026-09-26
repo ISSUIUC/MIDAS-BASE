@@ -37,14 +37,14 @@ def _build_midas_tab(self, parent, view_container):
 
     ttk.Button(
         midas_frame,
-        text="LOAD SERIAL NO",
-        command=self.load_serial_no
+        text="LOAD MIDAS CONFIG",
+        command=self.load_midas
     ).pack(pady=10)
 
     ttk.Button(
         midas_frame,
-        text="SET SERIAL NO",
-        command=self.set_serial_no
+        text="SET MIDAS CONFIG",
+        command=self.flash_midas
     ).pack(pady=10)
 
 
