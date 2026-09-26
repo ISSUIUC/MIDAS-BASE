@@ -1,6 +1,7 @@
 import time
 # Add an import for `threading` here. We'll need it to run the
 # identification step on a background thread instead of blocking the GUI.
+import threading
 import serial
 from midas_base.gss_combiner.hw.hwtypes import HwType
 
@@ -60,8 +61,14 @@ class FeatherSubprocess:
         #
         # Store the thread on the instance (e.g. self.__identify_thread)
         # in case we ever want to join it later.
-        self.check_type()
-    
+        #FIXME: This is a temporary solution. 
+        # We should eventually refactor the identification process to be non-blocking 
+        # and event-driven, allowing for better responsiveness in the GUI without 
+        # relying on threads
+        self.stat = "IDENTIFYING..."
+        self.__identify_thread = threading.Thread(target=self.check_type, daemon=True)
+        self.__identify_thread.start()
+
     def get_stat(self):
         return self.__ip, self.should_log
 
@@ -73,6 +80,11 @@ class FeatherSubprocess:
     # and, if so, remove it. This is used when the Console tab switches to a
     # different device - we don't want to keep shoving lines into a Text
     # widget that's no longer on screen.
+    #FIXME: This may not be needed based on how (Paritosh) is handling the console output. 
+    # If we are not using a fixed set of terminal, this can be removed.
+    def remove_terminal_output(self, outpt):
+        if outpt in self.__terminal_outputs:
+            self.__terminal_outputs.remove(outpt)
 
     def set_ip(self, ip):
         self.__ip = ip

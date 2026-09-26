@@ -72,7 +72,10 @@ def get_device(port):
 # The Console tab builder needs this as its `get_devices` argument.
 
 def get_all_devices():
-    return devices
+    #must return global device list
+    for _device in devices:
+        if _device.get.port() is not None:
+            return devices
 
 def run_standalone_worker(pipe_conn, ip, port, stage_sel, do_log):
     # Add real logic here
@@ -142,7 +145,7 @@ class DeviceApp(tk.Tk):
         # MIDAS BASE state
         self.gss_running = False
         self.gss_uptime_start = None
-        self.gss_process = None  # TODO: hold actual server process
+        self.gss_process = None  # hold actual server process
 
         # CONFIG state — which device is selected for config
         self.cfg_selected_port = None
@@ -185,6 +188,7 @@ class DeviceApp(tk.Tk):
                     devices.append(FeatherSubprocess(p))
             
             self.update_device_list()
+            
         except AssertionError as e:
             print(f"[!] update_devices encountered an error: {e}")
 
@@ -400,9 +404,7 @@ class DeviceApp(tk.Tk):
         self.notebook.add(connect_tab, text="CONNECT ")
         self.notebook.add(telem_tab, text="TELEM")
         self.notebook.add(export_tab, text="EXPORT")
-        # Add the Console tab to the notebook, right after EXPORT:
-        #     self.notebook.add(consoles_tab, text="CONSOLE")
-
+        self.notebook.add(consoles_tab, text="CONSOLE")
         # Default to MIDAS BASE
         self.notebook.select(home_tab)
 
@@ -419,7 +421,7 @@ class DeviceApp(tk.Tk):
         # the list object gets rebound on every update_devices tick):
         #     _build_consoles_tab(self, consoles_tab, get_all_devices)
 
-    def _build_poop(self, parent, name):
+    def _build_format(self, parent, name):
         ttk.Label(parent, text=f"{name} Temporary", font=("Helvetica", 14)).pack(expand=True)
 
     channels = ["A", "B", "C", "D"]
@@ -441,14 +443,14 @@ class DeviceApp(tk.Tk):
         # Simplify the guard. The old version checked both `not target_device`
         # and `not target_device.pipe_conn`. Since _send_and_wait will fail
         # cleanly if there's no pipe, just check `if not target_device:`.
-
-        if not target_device or not target_device.pipe_conn:
+        # /done/
+        if not target_device:
             print("No device connected")
             return
 
         # DELETE this line - no more raw pipe writes here, everything goes
         # through _send_and_wait now.
-        target_device.pipe_conn.send("echo 0\n")
+        #target_device.pipe_conn.send("echo 0\n")
 
         cruise_lockout, main_alt, pyro_fire_t, serial_no, midas_telem_freq = self.get_globals()
         # Simplify: ternary instead of the if/else block
@@ -482,29 +484,26 @@ class DeviceApp(tk.Tk):
         for cmd in commands_to_send:
             self._send_and_wait(target_device, cmd)
 
-
-        
-        
         #GLOBALS
-        target_device.pipe_conn.send(f"serial set {serial_no}\n")
-        time.sleep(.2)
-        #print(f"serial set {serial_no}\n")
-
-        target_device.pipe_conn.send(f"frequency set {midas_telem_freq}\n")
-        time.sleep(.2)
-        #print(f"frequency set {midas_telem_freq}\n")
-
-        target_device.pipe_conn.send(f"fsm threshold CRUISE_LOCKOUT_EN {cruise_lockout_num}\n")
+        # target_device.pipe_conn.send(f"serial set {serial_no}\n")
         # time.sleep(.2)
-        #print(f"fsm threshold CRUISE_LOCKOUT_EN {cruise_lockout_num}\n")
+        # #print(f"serial set {serial_no}\n")
 
-        target_device.pipe_conn.send(f"fsm threshold MAIN_ALT {main_alt}\n")
-        time.sleep(.2)
-        #print(f"fsm threshold MAIN_ALT {main_alt}\n")
+        # target_device.pipe_conn.send(f"frequency set {midas_telem_freq}\n")
+        # time.sleep(.2)
+        # #print(f"frequency set {midas_telem_freq}\n")
 
-        target_device.pipe_conn.send(f"fsm threshold PYRO_FIRE_T {pyro_fire_t}\n")
-        time.sleep(.2)
-        #print(f"fsm threshold MAIN_ALT {pyro_fire_t}\n")
+        # target_device.pipe_conn.send(f"fsm threshold CRUISE_LOCKOUT_EN {cruise_lockout_num}\n")
+        # # time.sleep(.2)
+        # #print(f"fsm threshold CRUISE_LOCKOUT_EN {cruise_lockout_num}\n")
+
+        # target_device.pipe_conn.send(f"fsm threshold MAIN_ALT {main_alt}\n")
+        # time.sleep(.2)
+        # #print(f"fsm threshold MAIN_ALT {main_alt}\n")
+
+        # target_device.pipe_conn.send(f"fsm threshold PYRO_FIRE_T {pyro_fire_t}\n")
+        # time.sleep(.2)
+        # #print(f"fsm threshold MAIN_ALT {pyro_fire_t}\n")
 
         
 
@@ -514,22 +513,16 @@ class DeviceApp(tk.Tk):
         # branch: instead of the if statement setting varnum, use
         #     varnum = 1 if data[field] else 0
         # then build the command string once.
-        # ___waiting on _send_and_wait method to finish___
+
         for ch in self.channels:
             for field in self.fields:
-                data = self.channel_entries_data[ch]
-
-                varnum = 0
                 if field == "ENABLE":
-                    if data[field]:
-                        varnum = 1
-                    cmd = f"fsm {ch} {field} {varnum}\n"
+                    value = 1 if data[field] else 0
                 else:
-                    cmd = f"fsm {ch} {field} {data[field]}\n"
+                    value = data[field]
+                    cmd = f"fsm {ch} {field} {value}"
                 #print(cmd)
-                target_device.pipe_conn.send(cmd)
-                time.sleep(.2)
-
+                self._send_and_wait(target_device,cmd)
 
 
     def load_midas(self):
@@ -570,7 +563,8 @@ class DeviceApp(tk.Tk):
             for field in self.fields:
                 cmd = f"fsm {ch} {field}\n"
                 self._send_and_wait(target_device, cmd)
-                time.sleep(.2)
+                if self.last_cmd is not None:
+                    self.parser_midas(cmd.strip(), self.last_cmd)
 
     # ADD a new helper method right here, between load_midas and on_select.
     # Name it _send_and_wait(self, device, cmd, timeout=1.5).
@@ -590,10 +584,20 @@ class DeviceApp(tk.Tk):
     #               return the line
     #     - if we got here, the deadline passed. Print a timeout error.
     #     - return None (so callers can check and skip on no response)
-    def _send_and_wait(self):
+    def _send_and_wait(self, device, cmd, timeout=1.5):
         device.read_serial_lines()
+        device.send_serial_msg(cmd + "\n").encode()
+        deadline = time.time() + timeout
+
+        while time.time() < deadline:
+            for line in device.read_serial_lines():
+                line.strip()
+                if line and "done" not in line:
+                    return line
+                time.sleep(.01)
         
-        return
+        print("No response in {timeout} seconds, command {cmd}")
+        return None
 
     def on_select(self, event):
         selected = self.tree.selection()
@@ -605,30 +609,28 @@ class DeviceApp(tk.Tk):
         #     item = selected[0]
         #     ... rest at the top level
 
-        if selected:
-            item = selected[0]
-            tags = self.tree.item(item, "tags")
+        if not selected:
+            return 
+        item = selected[0]
+        tags = self.tree.item(item, "tags")
 
-            if "disabled" in tags:
-                # Prevent selection visually
-                self.tree.selection_remove(item)
-                self.selected_device = None
+        # if selected:
+        #     item = selected[0]
+        #     tags = self.tree.item(item, "tags")
+
+        if "disabled" in tags:
+            # Prevent selection visually
+            self.tree.selection_remove(item)
+            self.selected_device = None
                 # Guard the device_label update with hasattr - the label
                 # only exists if the connect tab has been built.
-                #     if hasattr(self, "device_label"):
-                #         self.device_label.config(text="Select a device")
+            if hasattr(self, "device_label"):
                 self.device_label.config(text="Select a device")
-                # DELETE the four lines below that disable connect_btn,
-                # inspect_btn, and do_log_checkbox. None of those widgets
-                # live in this tab anymore.
 
             values = self.tree.item(item, "values")
             is_same_select = values[0] == self.selected_device
             self.selected_device = values[0]
             self.device_label.config(text=f"Selected: {self.selected_device}")
-            # DELETE the connect_btn and do_log_checkbox state lines here too.
-            self.connect_btn.config(state="normal")
-            self.do_log_checkbox.config(state="normal")
 
             _device = get_device(self.selected_device)
 
@@ -636,35 +638,35 @@ class DeviceApp(tk.Tk):
             # `if _device.type == HwType.XXX:` checks that enable/disable
             # the radio buttons and set stage_sel - none of that exists
             # in this tab anymore.
-            if not is_same_select:
-                if _device.type == HwType.MIDAS_MINI:
-                    self.radio1.config(state="normal")
-                    self.radio2.config(state="normal")
-                    self.radio3.config(state="disabled")
-                    self.mini.config(state="disabled")
-                    self.stage_sel.set("sustainer")
+            # if not is_same_select:
+            #     if _device.type == HwType.MIDAS_MINI:
+            #         self.radio1.config(state="normal")
+            #         self.radio2.config(state="normal")
+            #         self.radio3.config(state="disabled")
+            #         self.mini.config(state="disabled")
+            #         self.stage_sel.set("sustainer")
 
-                if _device.type == HwType.FEATHER_DUO:
-                    self.radio1.config(state="disabled")
-                    self.radio2.config(state="disabled")
-                    self.radio3.config(state="normal")
-                    self.stage_sel.set("duo")
+            #     if _device.type == HwType.FEATHER_DUO:
+            #         self.radio1.config(state="disabled")
+            #         self.radio2.config(state="disabled")
+            #         self.radio3.config(state="normal")
+            #         self.stage_sel.set("duo")
 
-                if _device.type == HwType.MIDAS_MINI:
-                    self.radio1.config(state="disabled")
-                    self.radio2.config(state="disabled")
-                    self.radio3.config(state="disabled")
-                    self.mini.config(state="normal")
-                    self.stage_sel.set("midas")
+            #     if _device.type == HwType.MIDAS_MINI:
+            #         self.radio1.config(state="disabled")
+            #         self.radio2.config(state="disabled")
+            #         self.radio3.config(state="disabled")
+            #         self.mini.config(state="normal")
+            #         self.stage_sel.set("midas")
 
                 # DELETE this online branch too - no ip_entry, no stage_sel
                 # setter. The whole "if _device.is_online():" block goes.
-                if _device.is_online():
-                    dev_ip, dev_sl = _device.get_stat()
-                    self.do_log.set(dev_sl)
-                    self.ip_entry.delete(0, tk.END) # Clear existing content
-                    self.ip_entry.insert(0, dev_ip)
-                    self.stage_sel.set(_device.stage_sel)
+                # if _device.is_online():
+                #     dev_ip, dev_sl = _device.get_stat()
+                #     self.do_log.set(dev_sl)
+                #     self.ip_entry.delete(0, tk.END) # Clear existing content
+                #     self.ip_entry.insert(0, dev_ip)
+                #     self.stage_sel.set(_device.stage_sel)
 
     def make_ground_station_thread(self):
         self.ground_station_thread = threading.Thread(group=None, target=self.start_ground_station)
@@ -793,10 +795,6 @@ class DeviceApp(tk.Tk):
             self.export_file_button.configure(state="normal")
             self.no_input_file_label.configure(text="Export your file here")
 
-
-        
-
-
     def export_data(self):
         filename = filedialog.asksaveasfilename()
         with open(filename, "w", newline="") as f:
@@ -846,10 +844,6 @@ class DeviceApp(tk.Tk):
         new_canvas = Canvas(plt, self.telem_frame, actual_xdata, actual_ydata, **TELEM_DATA_KEYS[data_key])
         new_canvas.plot(plt)
         self.canvas = new_canvas
-        
-
-
-
 
 #def set_terminal_output(self, outpt):
        # self.__terminal_outputs.append(outpt)
@@ -924,37 +918,37 @@ class DeviceApp(tk.Tk):
             return file_path
 
 #   Lowkey wont need these serial things anymore
-    def load_serial_no(self):
-        if self.selected_device is None:
-            return False
-        device = get_device(self.selected_device)
-        if device is None:
-            return False
-        device.send_serial_msg("serial get\n".encode())
-        time.sleep(0.2)
-        data = device.read_serial_lines()
-        serial_no = -1
-        for line in data:
-            try:
-                serial_no = int(line)
-            except:
-                continue
-        if serial_no == -1:
-            return
-        self.serial_no.set(str(serial_no).zfill(3))
-    def set_serial_no(self):
-        if self.selected_device is None:
-            return False
-        device = get_device(self.selected_device)
-        if device is None:
-            return False
-        try:
-            serial_no = int(self.serial_no.get())
-        except:
-            return False
-        device.send_serial_msg(f"serial set {serial_no}\n".encode())
-        time.sleep(0.2)
-        self.load_serial_no()
+    # def load_serial_no(self):
+    #     if self.selected_device is None:
+    #         return False
+    #     device = get_device(self.selected_device)
+    #     if device is None:
+    #         return False
+    #     device.send_serial_msg("serial get\n".encode())
+    #     time.sleep(0.2)
+    #     data = device.read_serial_lines()
+    #     serial_no = -1
+    #     for line in data:
+    #         try:
+    #             serial_no = int(line)
+    #         except:
+    #             continue
+    #     if serial_no == -1:
+    #         return
+    #     self.serial_no.set(str(serial_no).zfill(3))
+    # def set_serial_no(self):
+    #     if self.selected_device is None:
+    #         return False
+    #     device = get_device(self.selected_device)
+    #     if device is None:
+    #         return False
+    #     try:
+    #         serial_no = int(self.serial_no.get())
+    #     except:
+    #         return False
+    #     device.send_serial_msg(f"serial set {serial_no}\n".encode())
+    #     time.sleep(0.2)
+    #     self.load_serial_no()
 
 
 
@@ -964,5 +958,5 @@ def main() -> None:
     app.after(50, app.update_stdouts)
     # Add one more scheduled call right here, to kick off the console
     # stream loop that drains serial output for every connected device:
-    #     app.after(150, app.update_console_streams)
+    app.after(150, app.update_console_streams)
     app.mainloop()
