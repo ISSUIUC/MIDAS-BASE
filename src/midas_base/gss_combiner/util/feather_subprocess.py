@@ -245,6 +245,12 @@ class FeatherSubprocess:
     #     read/write directly. While check_type is still running on its
     #     background thread, nothing else should touch the port.
 
+    def is_ready_for_console(self):
+        if not self.is_unidentified() and self.get_serial() is not None:
+            return True
+        
+        
+
     def clean_visual(self):
         self.set_ip("")
         self.stat = "OFFLINE"

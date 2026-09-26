@@ -24,6 +24,7 @@ from midas_base.gss_combiner.tabs.ejection_test import _build_ejection_test_tab
 from midas_base.gss_combiner.tabs.telem import _build_telem_tab
 from midas_base.gss_combiner.tabs.export import _build_export_tab
 
+# TODO: 
 # ADD this import line (right after the export import). The new Console tab
 # lives in its own file:
 #     from midas_base.gss_combiner.tabs.consoles import _build_consoles_tab
@@ -46,10 +47,14 @@ def get_feather_duo_ports():
     FEATHER_DUO_PID = 4097
     return [port.device for port in comports() if port.pid == FEATHER_DUO_PID]
 
+# TODO: 
 # ADD a second function right below this one, named get_all_serial_ports().
 # It should return every serial port on the system, not just Feather Duos.
 # Same shape as get_feather_duo_ports, but no PID filter:
 #     return [port.device for port in comports()]
+
+def get_all_serial_ports():
+    return [port.device for port in comports()]
 
 devices: list[FeatherSubprocess] = [] #check if empty list works
 
@@ -60,10 +65,14 @@ def get_device(port):
             return _device
     return None
 
+# TODO: 
 # ADD a third module-level function right below get_device, named
 # get_all_devices(). It just returns the global `devices` list so callers
 # can iterate over every device without reaching for the global name.
 # The Console tab builder needs this as its `get_devices` argument.
+
+def get_all_devices():
+    return devices
 
 def run_standalone_worker(pipe_conn, ip, port, stage_sel, do_log):
     # Add real logic here
@@ -146,6 +155,7 @@ class DeviceApp(tk.Tk):
         ports = get_feather_duo_ports()
         existing_ports = [d.get_port() for d in devices]
 
+        # TODO
         # Wrap everything below (up to but NOT including the final
         # self.after(200, self.update_devices) line) in a try/except.
         # On exception `e`, print:
@@ -155,24 +165,30 @@ class DeviceApp(tk.Tk):
         # always runs and re-schedules the next poll.
 
         # Remove old ports that aren't connected
-        for d in devices:
-            if d.get_port() not in ports:
-                print("[!] Deleting ", d.get_port())
-                d.cleanup()
 
-                for window in self.windows:
-                    _device, _window = window
-                    if d.get_port() == _device:
-                        _window.destroy()
+        try:
+            for d in devices:
+                if d.get_port() not in ports:
+                    print("[!] Deleting ", d.get_port())
+                    d.cleanup()
+    
+                    for window in self.windows:
+                        _device, _window = window
+                        if d.get_port() == _device:
+                            _window.destroy()
+    
+            devices = [d for d in devices if d.get_port() in ports]
+            for p in ports:
+                # Check if this port is already in devices:
+                if p not in existing_ports:
+                    # Create a new one!
+                    devices.append(FeatherSubprocess(p))
+            
+            self.update_device_list()
+        except AssertionError as e:
+            print(f"[!] update_devices encountered an error: {e}")
 
-        devices = [d for d in devices if d.get_port() in ports]
-        for p in ports:
-            # Check if this port is already in devices:
-            if p not in existing_ports:
-                # Create a new one!
-                devices.append(FeatherSubprocess(p))
         
-        self.update_device_list()
         self.after(200, self.update_devices)
 
     def update_stdouts(self):
@@ -221,7 +237,8 @@ class DeviceApp(tk.Tk):
 
 
         self.after(50, self.update_stdouts)
-
+   
+    # TODO:
     # ADD a new method called update_console_streams(self) right here,
     # between update_stdouts and parser_midas.
     #
@@ -244,6 +261,30 @@ class DeviceApp(tk.Tk):
     # Note the interval is different from update_stdouts (50ms) - console
     # reads can be slower, so 150ms gives the serial hardware a chance to
     # produce something between calls without hammering it.
+    
+    def update_console_streams(self):
+        for device in get_all_devices():
+            if not device.is_ready_for_console() or device.has_errored:
+                continue
+
+            try:
+                lines = device.read_serial_lines()
+                serial_no = -1
+                for line in lines:
+                    try:
+                        serial_no = int(line)
+                    except:
+                        continue
+                if serial_no == -1:
+                    return
+                else: 
+                    device.add_to_stdout(line)
+                    
+            except Exception as e:
+                print(f"[{device.get_port()}] Failed to read console stream: {e}")
+
+        self.after(150, self.update_console_streams)      
+
 
     def parser_midas(self, cmd, val):
 
@@ -295,15 +336,19 @@ class DeviceApp(tk.Tk):
         # Same idea as the filter in update_devices - just don't touch
         # anything the user can't act on.
 
+        visible_devices = [d for d in devices if not d.is_unidentified()]
+
         # Re-insert updated device info
-        for _device in devices:
+        for _device in visible_devices:
             device = _device.to_dict()
+            
             # Change the disabled check: it used to trigger on both "NONE"
             # and "IDENTIFYING...". Now it should only trigger on
             # "IDENTIFYING..." - unidentified devices are already filtered
             # out above, so anything still showing NONE is a real device
             # we just haven't reached yet, and shouldn't be greyed out.
-            tags = ("disabled",) if device["status"].upper() in ("NONE", "IDENTIFYING...") else ()
+            
+            tags = ("disabled",) if device["status"].upper() in ("IDENTIFYING...") else ()
             if _device.is_online():
                 tags = tags + ("connected",)
             if _device.has_errored:
@@ -312,36 +357,26 @@ class DeviceApp(tk.Tk):
                 "", "end",
                 # Drop the server column from the values tuple. New tuple:
                 #     (device["port"], device["name"], device["status"], device["meta"])
-                values=(device["port"], device["name"], device["status"], device["server"], device["meta"]),
+                values=(device["port"], device["name"], device["status"], device["meta"]),
                 tags=tags
             )
 
             if _device.get_port() == self.selected_device:
-                # Add a comment here explaining WHY this line matters:
+                # Add a comment here explaining WHY this line matters (in your own words):
                 # the tree was just rebuilt from scratch, so the old item
                 # id (and its native selection state) no longer exists.
                 # Re-adding by the fresh item id restores the highlight
                 # without changing what self.selected_device says.
                 self.tree.selection_add(new_item)
 
-                # DELETE this whole inner block. It used to flip the
-                # inspect_btn and connect_btn state based on whether the
-                # selected device was online. None of that is needed here
-                # anymore.
-                if _device.is_online():
-                    self.inspect_btn.config(state="normal")
-                    self.connect_btn.config(text="Disconnect")
-                else:
-                    self.inspect_btn.config(state="disabled")
-                    self.connect_btn.config(text="Connect")
 
         # Update stats
         # Change len(devices) to len(visible_devices) so the count matches
         # the rows actually shown in the tree.
-        self.total_label.config(text=f"Total Devices: {len(devices)}")
+        self.total_label.config(text=f"Total Devices: {len(visible_devices)}")
         # Same story for the online count: iterate over visible_devices
         # instead of devices.
-        online_count = sum(1 for d in devices if d.to_dict()["status"].lower() == "online")
+        online_count = sum(1 for d in visible_devices if d.to_dict()["status"].lower() == "online")
         self.online_label.config(text=f"Online: {online_count}")
 
     def create_widgets(self):
@@ -436,12 +471,24 @@ class DeviceApp(tk.Tk):
         #     ]
         #
         # Then iterate: for cmd in that_list: self._send_and_wait(target_device, cmd)
+        
+        # GLOBALS_NEW
+        commands_to_send = [f"serial set {serial_no}",
+                            f"frequency set {midas_telem_freq}",
+                            f"fsm threshold CRUISE_LOCKOUT_EN {cruise_lockout_num}",
+                            f"fsm threshold MAIN_ALT {main_alt}",
+                            f"fsm threshold PYRO_FIRE_T {pyro_fire_t}"
+                            ]
+        for cmd in commands_to_send:
+            self._send_and_wait(target_device, cmd)
 
+
+        
+        
         #GLOBALS
         target_device.pipe_conn.send(f"serial set {serial_no}\n")
         time.sleep(.2)
         #print(f"serial set {serial_no}\n")
-
 
         target_device.pipe_conn.send(f"frequency set {midas_telem_freq}\n")
         time.sleep(.2)
@@ -459,12 +506,15 @@ class DeviceApp(tk.Tk):
         time.sleep(.2)
         #print(f"fsm threshold MAIN_ALT {pyro_fire_t}\n")
 
+        
+
         # CHANNELS
         # Same treatment here. Replace the pipe_conn.send + time.sleep
         # pattern with self._send_and_wait. Also simplify the ENABLE
         # branch: instead of the if statement setting varnum, use
         #     varnum = 1 if data[field] else 0
         # then build the command string once.
+        # ___waiting on _send_and_wait method to finish___
         for ch in self.channels:
             for field in self.fields:
                 data = self.channel_entries_data[ch]
@@ -487,7 +537,7 @@ class DeviceApp(tk.Tk):
 
         # Same simplification as flash_midas: drop the pipe_conn check
         # from the guard, keep only `if not target_device: return`.
-        if not target_device or not target_device.pipe_conn:
+        if not target_device:
             print("No device connected")
             return
 
@@ -496,49 +546,30 @@ class DeviceApp(tk.Tk):
 
         # DELETE this raw pipe send - the new version goes through
         # _send_and_wait("echo 0").
-        target_device.pipe_conn.send("echo 0\n")
+        target_device._send_and_wait("echo 0\n")
 
-        # Replace this GLOBALS section with a list of (command, var) pairs
-        # where var is the StringVar that command's response feeds into.
-        # The list should be:
-        #
-        #     globals_to_load = [
-        #         ("serial get",                      self.serial_no),
-        #         ("frequency get",                   self.midas_telem_freq),
-        #         ("fsm threshold CRUISE_LOCKOUT_EN", self.cruise_lockout),
-        #         ("fsm threshold MAIN_ALT",          self.main_alt),
-        #         ("fsm threshold PYRO_FIRE_T",       self.pyro_fire_t),
-        #     ]
-        #
-        # Then for each (cmd, var): call self._send_and_wait(target_device, cmd),
-        # and if the response isn't None, pass it to self.parser_midas(cmd, response).
+        globals_to_load = [
+                ("serial get",                      self.serial_no),
+                ("frequency get",                   self.midas_telem_freq),
+                ("fsm threshold CRUISE_LOCKOUT_EN", self.cruise_lockout),
+                ("fsm threshold MAIN_ALT",          self.main_alt),
+                ("fsm threshold PYRO_FIRE_T",       self.pyro_fire_t),
+            ]
 
-        #GLOBALS
-        target_device.pipe_conn.send("serial get\n")
-        time.sleep(.2)
 
-        target_device.pipe_conn.send("frequency get\n")
-        time.sleep(.2)
-
-        target_device.pipe_conn.send("fsm threshold CRUISE_LOCKOUT_EN\n")
-        time.sleep(.2)
-
-        target_device.pipe_conn.send("fsm threshold MAIN_ALT\n")
-        time.sleep(.2)
-
-        target_device.pipe_conn.send("fsm threshold PYRO_FIRE_T\n")
-        time.sleep(.2)
+        for cmd, var in globals_to_load:
+            self._send_and_wait(target_device, cmd)
 
         # CHANNELS
         # Same treatment. For each channel and each field, build the
         # command "fsm {ch} {field}", call _send_and_wait, and if the
         # response isn't None, feed it to parser_midas. No more raw
         # pipe_conn.send + time.sleep pattern.
-
+        
         for ch in self.channels:
             for field in self.fields:
                 cmd = f"fsm {ch} {field}\n"
-                target_device.pipe_conn.send(cmd)
+                self._send_and_wait(target_device, cmd)
                 time.sleep(.2)
 
     # ADD a new helper method right here, between load_midas and on_select.
@@ -559,6 +590,10 @@ class DeviceApp(tk.Tk):
     #               return the line
     #     - if we got here, the deadline passed. Print a timeout error.
     #     - return None (so callers can check and skip on no response)
+    def _send_and_wait(self):
+        device.read_serial_lines()
+        
+        return
 
     def on_select(self, event):
         selected = self.tree.selection()
@@ -586,10 +621,6 @@ class DeviceApp(tk.Tk):
                 # DELETE the four lines below that disable connect_btn,
                 # inspect_btn, and do_log_checkbox. None of those widgets
                 # live in this tab anymore.
-                self.connect_btn.config(state="disabled")
-                self.inspect_btn.config(state="disabled")
-                self.do_log_checkbox.config(state="disabled")
-                return
 
             values = self.tree.item(item, "values")
             is_same_select = values[0] == self.selected_device
@@ -891,22 +922,6 @@ class DeviceApp(tk.Tk):
         if file_path:
             print(f"Selected file: {file_path}")
             return file_path
-
-    # ADD a new helper method _send_and_wait right here (before
-    # load_serial_no), or anywhere else convenient in the class. See the
-    # longer description earlier in the file - the algorithm is:
-    #     flush stale bytes with read_serial_lines
-    #     send the command encoded with a trailing newline
-    #     loop reading lines until a deadline (timeout arg, default 1.5s)
-    #     return the first non-empty line that doesn't contain "done"
-    #     if the loop times out, print a timeout message and return None
-    #
-    # This replaces every pipe_conn.send + time.sleep(.2) pattern that
-    # used to litter load_midas and flash_midas.
-
-    # Note: load_midas has been moved up in the file (right after
-    # flash_midas). In the new version it lives there, not down here.
-
 
 #   Lowkey wont need these serial things anymore
     def load_serial_no(self):
