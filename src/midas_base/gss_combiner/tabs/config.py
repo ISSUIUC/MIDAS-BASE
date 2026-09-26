@@ -169,7 +169,45 @@ def _build_midas_tab(self, parent, view_container):
 def _build_feather_duo_tab(self, parent, view_container):
     feather_frame = ttk.Frame(view_container)
     ttk.Label(feather_frame, text="Feather Duo Config View", font=("Helvetica", 14)).pack(pady=20)
+    midas_frame = ttk.Frame(view_container)
 
+
+    ttk.Button(
+        feather_frame,
+        text="LOAD SERIAL NO FEATHER",
+        command=self.load_serial_no_feather
+    ).pack(pady=10)
+
+    ttk.Button(
+        feather_frame,
+        text="SET SERIAL NO FEATHER",
+        command=self.set_serial_no_feather
+    ).pack(pady=10)
+
+
+    # ── MAIN HORIZONTAL SPLIT ──
+    main_row = ttk.Frame(feather_frame)
+    main_row.pack(fill="both", expand=True, padx=10, pady=10)
+
+    # LEFT: Radio 1
+    left_frame = ttk.LabelFrame(main_row, text="Radio 1")
+    left_frame.pack(side="left", fill="both", expand=True, padx=5)
+
+    # RIGHT: Radio 2
+    right_frame = ttk.LabelFrame(main_row, text="Radio 2")
+    right_frame.pack(side="right", fill="both", expand=True, padx=5)
+
+
+    # ── LEFT SIDE (Radio 1) ──
+    self.frequency_1 = add_row(left_frame, "Frequency 1")
+    self.serial_number_1 = add_row(left_frame, "Serial Number 1")
+    
+    # ── RIGHT SIDE (Radio 2) ──
+    self.frequency_2 = add_row(right_frame, "Frequency 2")
+    self.serial_number_2 = add_row(right_frame, "Serial Number 1")
+
+
+    
     return feather_frame
 
 def _build_config_tab(self, parent):

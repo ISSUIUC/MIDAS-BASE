@@ -753,6 +753,38 @@ class DeviceApp(tk.Tk):
         time.sleep(0.2)
         self.load_serial_no()
 
+    def load_serial_no_feather(self):
+            if self.selected_device is None:
+                return False
+            device = get_device(self.selected_device)
+            if device is None:
+                return False
+            device.send_serial_msg("serial 1 get\n".encode())
+            time.sleep(0.2)
+            data = device.read_serial_lines()
+            serial_no = -1
+            for line in data:
+                try:
+                    serial_no = int(line)
+                except:
+                    continue
+            if serial_no == -1:
+                return
+            self.serial_number_1.set(str(serial_no).zfill(3))
+    def set_serial_no_feather(self):
+            if self.selected_device is None:
+                return False
+            device = get_device(self.selected_device)
+            if device is None:
+                return False
+            try:
+                serial_no = int(self.serial_number_1.get())
+            except:
+                return False
+            device.send_serial_msg(f"serial 1 set {serial_no}\n".encode())
+            time.sleep(0.2)
+            self.load_serial_no_feather()
+
 
 
 def main() -> None:

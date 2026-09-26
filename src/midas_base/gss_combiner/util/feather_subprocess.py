@@ -78,6 +78,8 @@ class FeatherSubprocess:
             return # This will be taken over by another process already 
         
         port_taken, self.__serial = is_port_taken(self.__port)
+        print(port_taken)
+        print(self.__serial)
         if port_taken:
             self.stat = "NONE"
             self.type = "UNKNOWN"
@@ -106,15 +108,15 @@ class FeatherSubprocess:
                         if ident_value == "FEATHER_M0":
                             self.type = HwType.FEATHER_M0
                             self.stat = "OFFLINE"
-                            self.__serial.close()
-                            self.__serial = None
+                            # self.__serial.close()
+                            # self.__serial = None
                             return
                         
                         if ident_value == "FEATHER_DUO":
                             self.type = HwType.FEATHER_DUO
                             self.stat = "OFFLINE"
-                            self.__serial.close()
-                            self.__serial = None
+                            # self.__serial.close()
+                            # self.__serial = None
                             return
                         
                         if ident_value == "MIDAS_MINI":
