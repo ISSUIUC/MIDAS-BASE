@@ -31,10 +31,10 @@ import json
 import configparser
 import argparse
 
-import util.mqtt as mqtt
-import util.combiner as combiner
-import util.logger as logger
-import util.print_util
+import midas_base.gss_combiner.util.mqtt as mqtt
+import midas_base.gss_combiner.util.combiner as combiner
+import midas_base.gss_combiner.util.logger as logger
+import midas_base.gss_combiner.util.print_util
 from serial.tools import list_ports
 
 uri_target = ""

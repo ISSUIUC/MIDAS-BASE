@@ -14,7 +14,7 @@ import datetime
 import threading
 import sys
 import queue
-import standalone
+import midas_base.gss_combiner.standalone as standalone
 
 # Original UI here
 def _build_home_tab(self, parent, devices):

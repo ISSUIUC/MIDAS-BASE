@@ -15,7 +15,7 @@ import threading
 import sys
 import queue
 import json
-from util.canvas import TELEM_DATA_KEYS, REVERSE_TELEM_DATA_KEYS
+from midas_base.gss_combiner.util.canvas import TELEM_DATA_KEYS, REVERSE_TELEM_DATA_KEYS
 
 
 def _build_telem_tab(self, parent, name):
