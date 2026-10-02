@@ -119,8 +119,7 @@ def _build_midas_tab(self, parent, view_container):
 
     # Init
     load_channel("A")
-
-
+    
     # ── FLASH BUTTON (CENTERED BELOW) ──
     flash_btn = ttk.Button(
         midas_frame,
@@ -153,8 +152,31 @@ def _build_midas_tab(self, parent, view_container):
 
 def _build_feather_duo_tab(self, parent, view_container):
     feather_frame = ttk.Frame(view_container)
-    ttk.Label(feather_frame, text="Feather Duo Config View", font=("Helvetica", 14)).pack(pady=20)
+    ttk.Label(feather_frame, 
+              text="FEATHER DUO CONFIG", 
+              font=("Helvetica", 14, "bold")
+              ).pack(pady=20)
 
+     # ── MAIN HORIZONTAL SPLIT ──
+    main_row = ttk.Frame(feather_frame)
+    main_row.pack(fill="both", expand=True, padx=10, pady=10)
+    
+     # LEFT: GLOBAL / PYRO
+    left_frame = ttk.LabelFrame(main_row, text="Data / Global Settings")
+    left_frame.pack(side="left", fill="both", expand=True, padx=5)
+
+    self.cruise_lockout = add_row(left_frame, "Frequency (float)")
+    self.main_alt = add_row(left_frame, "Name (string)")
+
+    flash_btn = ttk.Button(
+            feather_frame,
+                text="FLASH",
+                command=self.flash_midas,
+                width=20
+            )
+    flash_btn.pack(side="right", pady=20)
+
+    
     return feather_frame
 
 def _build_config_tab(self, parent):

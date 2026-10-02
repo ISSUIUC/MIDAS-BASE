@@ -20,7 +20,7 @@ import sys
 import queue
 from midas_base.gss_combiner.tabs.config import _build_config_tab
 from midas_base.gss_combiner.tabs.connect import _build_connect_tab
-from midas_base.gss_combiner.tabs.ejection_test import _build_ejection_test_tab
+from midas_base.gss_combiner.tabs.ejection_test import _build_ejection_test_tab, _build_locked_ejection_test_tab
 from midas_base.gss_combiner.tabs.telem import _build_telem_tab
 from midas_base.gss_combiner.tabs.export import _build_export_tab
 from tkinter import filedialog
@@ -273,6 +273,35 @@ class DeviceApp(tk.Tk):
         online_count = sum(1 for d in devices if d.to_dict()["status"].lower() == "online")
         self.online_label.config(text=f"Online: {online_count}")
 
+
+    def check_password(self, user_password):
+        password = "MIDAS123"
+        current_state = "locked"
+        
+        while(user_password != password):
+           print("Incorrect password! Please try again")
+
+        else:
+          _build_ejection_test_tab(self, test_tab, "TEST", devices)
+          
+
+    def create_password_box(self):
+        root = tk.Tk();
+       
+        # Create the StringVar tracker
+        user_password = tk.StringVar()
+
+        # Attach it to the Entry widget
+        entry_box = ttk.Entry(root, textvariable=user_password)
+        entry_box.pack(pady=10)
+
+        submit_btn = ttk.Button(root, text="Submit", command=lambda: self.check_password(user_password.get()))
+        submit_btn.pack()
+
+       
+
+    
+
     def create_widgets(self):
         # Menu Bar
         self.notebook = ttk.Notebook(self)
@@ -296,11 +325,9 @@ class DeviceApp(tk.Tk):
         # Default to MIDAS BASE
         self.notebook.select(home_tab)
 
-
+        _build_locked_ejection_test_tab(self, test_tab, "TEST", devices)
         _build_connect_tab(self, connect_tab, devices)
         _build_config_tab(self, config_tab)
-        
-        _build_ejection_test_tab(self, test_tab, "TEST", devices)
         _build_telem_tab(self, telem_tab, "TELEM")
         _build_export_tab(self, export_tab)
         _build_home_tab(self, home_tab, devices)

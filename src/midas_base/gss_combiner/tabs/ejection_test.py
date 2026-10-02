@@ -1,6 +1,37 @@
 import tkinter as tk
 from tkinter import ttk
 
+def get_password(entry):
+    password = entry.get();
+    print(password)
+    return password
+
+
+def _build_locked_ejection_test_tab(self, parent, name, devices):
+    ttk.Label(parent,font=("Helvetica", 14)).pack(expand=True)
+    
+    message = ttk.Label(parent, text="Please enter the password")
+    message.place(relx=0.5, y=90, anchor="n")
+
+    entry = tk.Entry(parent, width=30)
+    entry.pack(padx=10, pady=10)
+    entry.place(relx= 0.5, y= 120)
+
+    submit_password_button = ttk.Button(
+            parent, 
+            text="Submit", 
+            padding=(20, 20), 
+            command=lambda: get_password(entry) #update this later to the check password function
+        )
+    submit_password_button.place(relx=0.5, y=170)
+    submit_password_button.pack(pady=5)
+     
+
+
+
+
+
+
 def _build_ejection_test_tab(self, parent, name, devices):
     ttk.Label(parent,font=("Helvetica", 14)).pack(expand=True)
 
@@ -89,7 +120,6 @@ def _build_ejection_test_tab(self, parent, name, devices):
         command=lambda: fire_D(self)
     )
     self.fire_D_button.place(x=670, y=250)
-
 
 def refresh_serials(self, devices):
     from midas_base.gss_combiner.util.feather_subprocess import FeatherSubprocess
