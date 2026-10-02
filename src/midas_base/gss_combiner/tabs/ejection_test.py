@@ -1,5 +1,19 @@
 import tkinter as tk
 from tkinter import ttk
+import sys, hashlib, getpass
+
+
+def get_hashed_password(text: str):
+    return hashlib.sha256(text.encode()).hexdigest()
+while 1:
+    key = getpass.getpass("Enter key: ")
+    if get_hashed_password(key) != "3a9023d5efaf19c2ef7d8f82da962a6a1a91c89911298c94fbad7d8525db1b8f":
+        sys.stderr.write(f'"{key}" is incorrect\n')
+        # sys.exit(1)
+    else:
+        break
+
+print("You passed the internal password verification")
 
 def _build_ejection_test_tab(self, parent, name, devices):
     ttk.Label(parent,font=("Helvetica", 14)).pack(expand=True)
