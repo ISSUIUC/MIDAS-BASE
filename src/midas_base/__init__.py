@@ -1,3 +1,5 @@
+from getpass import getpass
+import hashlib
 import tkinter as tk
 from tkinter import ttk
 import multiprocessing
@@ -18,13 +20,13 @@ from pathlib import Path
 import threading
 import sys
 import queue
-from midas_base.gss_combiner.tabs.config import _build_config_tab
+from midas_base.gss_combiner.tabs.config import _build_locked_config_tab
 from midas_base.gss_combiner.tabs.connect import _build_connect_tab
-from midas_base.gss_combiner.tabs.ejection_test import _build_ejection_test_tab, _build_locked_ejection_test_tab
+from midas_base.gss_combiner.tabs.ejection_test import _build_locked_ejection_test_tab
 from midas_base.gss_combiner.tabs.telem import _build_telem_tab
 from midas_base.gss_combiner.tabs.export import _build_export_tab
 from tkinter import filedialog
-from matplotlib import pyplot as plt
+from matplotlib import pyplot as plt, text
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from midas_base.gss_combiner.util.canvas import Canvas, TELEM_DATA_KEYS, REVERSE_TELEM_DATA_KEYS
 
@@ -43,6 +45,7 @@ def get_feather_duo_ports():
 
 
 devices: list[FeatherSubprocess] = [] #check if empty list works
+
 
 def get_device(port):
     # get the device
@@ -273,16 +276,7 @@ class DeviceApp(tk.Tk):
         online_count = sum(1 for d in devices if d.to_dict()["status"].lower() == "online")
         self.online_label.config(text=f"Online: {online_count}")
 
-
-    def check_password(self, user_password):
-        password = "MIDAS123"
-        current_state = "locked"
         
-        while(user_password != password):
-           print("Incorrect password! Please try again")
-
-        else:
-          _build_ejection_test_tab(self, test_tab, "TEST", devices)
           
 
     def create_password_box(self):
@@ -298,7 +292,6 @@ class DeviceApp(tk.Tk):
         submit_btn = ttk.Button(root, text="Submit", command=lambda: self.check_password(user_password.get()))
         submit_btn.pack()
 
-       
 
     
 
@@ -325,9 +318,9 @@ class DeviceApp(tk.Tk):
         # Default to MIDAS BASE
         self.notebook.select(home_tab)
 
-        _build_locked_ejection_test_tab(self, test_tab, "TEST", devices)
+        _build_locked_ejection_test_tab(self, test_tab)
         _build_connect_tab(self, connect_tab, devices)
-        _build_config_tab(self, config_tab)
+        _build_locked_config_tab(self, config_tab)
         _build_telem_tab(self, telem_tab, "TELEM")
         _build_export_tab(self, export_tab)
         _build_home_tab(self, home_tab, devices)

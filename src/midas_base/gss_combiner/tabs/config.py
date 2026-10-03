@@ -1,8 +1,51 @@
+import hashlib
 import tkinter as tk
 from tkinter import ttk
 from pathlib import Path
+from tkinter import messagebox
 from serial.tools.list_ports import comports
 from midas_base.gss_combiner.hw.hwtypes import HwType
+
+
+def get_password(password):
+    user_attempt = hashlib.sha256(password.encode()).hexdigest()
+    return user_attempt
+
+def check_password(self, password, parent):
+    #compare the user's input with the correct password
+    if get_password(password) != "3a9023d5efaf19c2ef7d8f82da962a6a1a91c89911298c94fbad7d8525db1b8f":
+        messagebox.showerror("Error", "Incorrect password! Please try again.")
+
+    else:
+        parent.destroy() #right now, the order of the tabs gets switched around because we rebuild the tab
+        config_tab = ttk.Frame(self.notebook)
+        config_tab.grid(row=0, column=1) 
+        self.notebook.add(config_tab, text="CONFIG")
+        # Switch tab to config
+        self.notebook.select(config_tab)
+        _build_config_tab(self, config_tab)
+
+
+def _build_locked_config_tab(self, parent):
+    ttk.Label(parent,font=("Helvetica", 20)).pack(expand=True)
+        
+    message = ttk.Label(parent, text="Please enter the password")
+    message.place(relx=0.5, y=90, anchor="n")
+    
+    entry = tk.Entry(parent, width=30)
+    entry.pack(padx=10, pady=10)
+    entry.place(relx=0.5, y=120, anchor="n")
+    
+    submit_password_button = ttk.Button(
+        parent, 
+        text="Submit", 
+        padding=(20, 20), 
+        command=lambda: check_password(self, entry.get(), parent) #update this later to the check password function
+    )
+    submit_password_button.place(relx=0.5, y=170)
+    submit_password_button.pack(pady=5)
+
+
 
 def add_row(parent, label):
     frame = ttk.Frame(parent)
