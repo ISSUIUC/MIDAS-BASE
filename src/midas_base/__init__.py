@@ -23,6 +23,7 @@ from midas_base.gss_combiner.tabs.connect import _build_connect_tab
 from midas_base.gss_combiner.tabs.ejection_test import _build_ejection_test_tab
 from midas_base.gss_combiner.tabs.telem import _build_telem_tab
 from midas_base.gss_combiner.tabs.export import _build_export_tab
+from midas_base.gss_combiner.tabs.consoles import _build_consoles_tab
 from tkinter import filedialog
 from matplotlib import pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
@@ -133,40 +134,38 @@ class DeviceApp(tk.Tk):
         self.create_widgets()
 
     def update_devices(self):
-        global devices
-        # TODO
-        # This polling loop should use get_all_serial_ports() so it sees every
-        # serial device, not only Feather Duos. Keep the re-scheduling reliable
-        # even if one polling pass throws an exception.
-        try:
-            ports = get_all_serial_ports()
-            existing_ports = [d.get_port() for d in devices]
+            global devices
+            try:
+                ports = get_all_serial_ports()
+                existing_ports = [d.get_port() for d in devices]
 
-            # Remove old ports that aren't connected
-            for d in devices:
-                if d.get_port() not in ports:
-                    print("[!] Deleting ", d.get_port())
-                    d.cleanup()
+                # Remove old ports that aren't connected
+                for d in devices:
+                    if d.get_port() not in ports:
+                        print("[!] Deleting ", d.get_port())
+                        d.cleanup()
+                
+                # Update the global devices list
+                devices = [d for d in devices if d.get_port() in ports]
+                
+                # Add new ports
+                for p in ports:
+                    if p not in existing_ports:
+                        # Create a new one!
+                        devices.append(FeatherSubprocess(p))
 
-                    for window in self.windows:
-                        _device, _window = window
-                        if d.get_port() == _device:
-                            _window.destroy()
-
-            devices = [d for d in devices if d.get_port() in ports]
-            for p in ports:
-                # Check if this port is already in devices:
-                if p not in existing_ports:
-                    # Create a new one!
-                    devices.append(FeatherSubprocess(p))
-
-            self.update_device_list()
-            if hasattr(self, "refresh_console_devices"):
-                self.refresh_console_devices()
-        except Exception as e:
-            print(f"[!] update_devices encountered an error: {e}")
-        finally:
-            self.after(200, self.update_devices)
+                # Update the main UI list
+                if hasattr(self, "update_device_list"):
+                    self.update_device_list()
+                    
+            except Exception as e:
+                print(f"[!] update_devices encountered an error: {e}")
+                # get_all_devices() is called safely here
+                if 'get_all_devices' in globals():
+                    print(f"[!] Current devices: {get_all_devices()}")
+            finally:
+                # This ensures the loop always continues even if an exception occurs
+                self.after(200, self.update_devices)
 
     def update_stdouts(self):
         global devices
@@ -341,11 +340,7 @@ class DeviceApp(tk.Tk):
         connect_tab = ttk.Frame(self.notebook)
         telem_tab = ttk.Frame(self.notebook)
         export_tab = ttk.Frame(self.notebook)
-        # Add a new frame for the Console tab, same style as the others:
-        #     consoles_tab = ttk.Frame(self.notebook)
-        # TODO: The Console tab setup is only partially implemented here.
-        # Once the frame is added, it should be registered with the notebook
-        # and passed to _build_consoles_tab.
+        consoles_tab = ttk.Frame(self.notebook)  
 
         self.notebook.add(home_tab, text="HOME")
         self.notebook.add(config_tab, text="CONFIG")
@@ -353,7 +348,7 @@ class DeviceApp(tk.Tk):
         self.notebook.add(connect_tab, text="CONNECT ")
         self.notebook.add(telem_tab, text="TELEM")
         self.notebook.add(export_tab, text="EXPORT")
-        #self.notebook.add(consoles_tab, text="CONSOLE")
+        self.notebook.add(consoles_tab, text="CONSOLE")
         # Default to MIDAS BASE
         self.notebook.select(home_tab)
 
@@ -365,10 +360,7 @@ class DeviceApp(tk.Tk):
         _build_telem_tab(self, telem_tab, "TELEM")
         _build_export_tab(self, export_tab)
         _build_home_tab(self, home_tab, devices)
-        # Call the new Console tab builder here, after home_tab, passing
-        # the get_all_devices function (not the devices list itself, since
-        # the list object gets rebound on every update_devices tick):
-        #     _build_consoles_tab(self, consoles_tab, get_all_devices)
+        _build_consoles_tab(self, consoles_tab, get_all_devices)
 
     def _build_format(self, parent, name):
         ttk.Label(parent, text=f"{name} Temporary", font=("Helvetica", 14)).pack(expand=True)
@@ -802,6 +794,39 @@ class DeviceApp(tk.Tk):
     #     device.send_serial_msg(f"serial set {serial_no}\n".encode())
     #     time.sleep(0.2)
     #     self.load_serial_no()
+
+    def load_serial_no_feather(self):
+        if self.selected_device is None:
+            return False
+        device = get_device(self.selected_device)
+        if device is None:
+            return False
+        device.send_serial_msg("serial 1 get\n".encode())
+        time.sleep(0.2)
+        data = device.read_serial_lines()
+        serial_no = -1
+        for line in data:
+            try:
+                serial_no = int(line)
+            except:
+                continue
+        if serial_no == -1:
+            return
+        self.serial_number_1.set(str(serial_no).zfill(3))
+
+    def set_serial_no_feather(self):
+        if self.selected_device is None:
+            return False
+        device = get_device(self.selected_device)
+        if device is None:
+            return False
+        try:
+            serial_no = int(self.serial_number_1.get())
+        except:
+            return False
+        device.send_serial_msg(f"serial 1 set {serial_no}\n".encode())
+        time.sleep(0.2)
+        self.load_serial_no_feather()
 
 def main() -> None:
     app = DeviceApp()
