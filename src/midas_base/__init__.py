@@ -213,29 +213,6 @@ class DeviceApp(tk.Tk):
 
         self.after(50, self.update_stdouts)
 
-    def update_console_streams(self):
-        # TODO:
-        # Drain serial output for every connected device so the Console tab
-        # always has the device's stdout history, regardless of which device
-        # is currently selected.
-        for device in get_all_devices():
-            if not device.is_ready_for_console():
-                continue
-            if device.has_errored:
-                continue
-
-            try:
-                for line in device.read_serial_lines():
-                    if line.strip() == "":
-                        continue
-                    device.add_to_stdout(line)
-            except (serial.SerialException, OSError) as e:
-                print(f"[{device.get_port()}] Console read failed: {e}")
-                device.has_errored = True
-
-        self.after(150, self.update_console_streams)
-
-
     def parser_midas(self, cmd, val):
 
         for unit in [" MHz", " m/s", " ms", " m", " degrees"]:
@@ -436,10 +413,7 @@ class DeviceApp(tk.Tk):
 
         # Making sure the shell is in a clean state
         self._send_and_wait(target_device, "echo 0")
-
-        # DELETE this raw pipe send - the new version goes through
-        # _send_and_wait("echo 0").
-        target_device._send_and_wait("echo 0\n")
+        
 
         globals_to_load = [
             ("serial get",                      self.serial_no),
@@ -471,20 +445,35 @@ class DeviceApp(tk.Tk):
                 self.parser_midas(cmd, response) #we have to parse a valid command
 
     def _send_and_wait(self, device, cmd, timeout=1.5):
+        # Flush any stale data in the buffer
         device.read_serial_lines()
 
-        device.send_serial_msg(f"{cmd}\n".encode())
+        # Send command (using \r\n for better hardware reliability)
+        device.send_serial_msg(f"{cmd}\r\n".encode())
 
         deadline = time.time() + timeout
+        last_valid_line = None
+
         while time.time() < deadline:
             lines = device.read_serial_lines()
             for line in lines:
                 line = line.strip()
-                if line and "done" not in line.lower():
-                    return line
+                if not line:
+                    continue
+                
+                # If we see "done", the board is finished executing the command.
+                # Immediately return whatever valid data we found.
+                if "done" in line.lower():
+                    return last_valid_line
+                
+                # If the line isn't the command echo, it must be our data.
+                if cmd not in line:
+                    last_valid_line = line
+                    
             time.sleep(0.02)
+            
         print(f"[load_midas] Timeout waiting for response to: {cmd}")
-        return None
+        return last_valid_line
 
     def on_select(self, event):
         selected = self.tree.selection()
@@ -762,39 +751,6 @@ class DeviceApp(tk.Tk):
             print(f"Selected file: {file_path}")
             return file_path
 
-    #   Lowkey wont need these serial things anymore
-    # def load_serial_no(self):
-    #     if self.selected_device is None:
-    #         return False
-    #     device = get_device(self.selected_device)
-    #     if device is None:
-    #         return False
-    #     device.send_serial_msg("serial get\n".encode())
-    #     time.sleep(0.2)
-    #     data = device.read_serial_lines()
-    #     serial_no = -1
-    #     for line in data:
-    #         try:
-    #             serial_no = int(line)
-    #         except:
-    #             continue
-    #     if serial_no == -1:
-    #         return
-    #     self.serial_no.set(str(serial_no).zfill(3))
-    # def set_serial_no(self):
-    #     if self.selected_device is None:
-    #         return False
-    #     device = get_device(self.selected_device)
-    #     if device is None:
-    #         return False
-    #     try:
-    #         serial_no = int(self.serial_no.get())
-    #     except:
-    #         return False
-    #     device.send_serial_msg(f"serial set {serial_no}\n".encode())
-    #     time.sleep(0.2)
-    #     self.load_serial_no()
-
     def load_serial_no_feather(self):
         if self.selected_device is None:
             return False
@@ -834,5 +790,4 @@ def main() -> None:
     app.after(50, app.update_stdouts)
     # Add one more scheduled call right here, to kick off the console
     # stream loop that drains serial output for every connected device:
-    app.after(150, app.update_console_streams)
     app.mainloop()
