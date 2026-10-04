@@ -1,5 +1,49 @@
+import hashlib
+import sys
 import tkinter as tk
 from tkinter import ttk
+from tkinter import messagebox
+from midas_base.gss_combiner.util.feather_subprocess import FeatherSubprocess
+
+devices: list[FeatherSubprocess] = [] #check if empty list works
+
+def get_password(password):
+    user_attempt = hashlib.sha256(password.encode()).hexdigest()
+    return user_attempt
+
+def check_password(self, password, parent):
+    #compare the user's input with the correct password
+    if get_password(password) != "3a9023d5efaf19c2ef7d8f82da962a6a1a91c89911298c94fbad7d8525db1b8f":
+        messagebox.showerror("Error", "Incorrect password! Please try again.")
+
+    else:
+        parent.destroy()
+        test_tab = ttk.Frame(self.notebook)
+        self.notebook.add(test_tab, text="EJECTION_TEST")
+        # Switch tab to ejection test
+        self.notebook.select(test_tab)
+        
+        _build_ejection_test_tab(self, test_tab, "TEST", devices)
+
+def _build_locked_ejection_test_tab(self, parent):
+    ttk.Label(parent,font=("Helvetica", 20)).pack(expand=True)
+
+    message = ttk.Label(parent, text="Please enter the password")
+    message.place(relx=0.5, y=90, anchor="n")
+
+    entry = tk.Entry(parent, width=30)
+    entry.pack(padx=10, pady=10)
+    entry.place(relx=0.5, y=120, anchor="n")
+
+    submit_password_button = ttk.Button(
+            parent, 
+            text="Submit", 
+            padding=(20, 20), 
+            command=lambda: check_password(self, entry.get(), parent) #update this later
+        )
+    submit_password_button.place(relx=0.5, y=170)
+    submit_password_button.pack(pady=5)
+     
 
 def _build_ejection_test_tab(self, parent, name, devices):
     ttk.Label(parent,font=("Helvetica", 14)).pack(expand=True)

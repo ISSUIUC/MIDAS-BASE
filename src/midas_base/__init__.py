@@ -1,3 +1,5 @@
+from getpass import getpass
+import hashlib
 import tkinter as tk
 from tkinter import ttk
 import multiprocessing
@@ -18,14 +20,16 @@ from pathlib import Path
 import threading
 import sys
 import queue
-from midas_base.gss_combiner.tabs.config import _build_config_tab
+# from midas_base.gss_combiner.tabs.config import _build_config_tab
+from midas_base.gss_combiner.tabs.config import _build_locked_config_tab
 from midas_base.gss_combiner.tabs.connect import _build_connect_tab
-from midas_base.gss_combiner.tabs.ejection_test import _build_ejection_test_tab
+# from midas_base.gss_combiner.tabs.ejection_test import _build_ejection_test_tab
+from midas_base.gss_combiner.tabs.ejection_test import _build_locked_ejection_test_tab
 from midas_base.gss_combiner.tabs.telem import _build_telem_tab
 from midas_base.gss_combiner.tabs.export import _build_export_tab
 from midas_base.gss_combiner.tabs.consoles import _build_consoles_tab
 from tkinter import filedialog
-from matplotlib import pyplot as plt
+from matplotlib import pyplot as plt, text
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from midas_base.gss_combiner.util.canvas import Canvas, TELEM_DATA_KEYS, REVERSE_TELEM_DATA_KEYS
 from midas_base.gss_combiner.tabs.home import _build_home_tab
@@ -305,6 +309,19 @@ class DeviceApp(tk.Tk):
         online_count = sum(1 for d in visible_devices if d.is_online())
         self.online_label.config(text=f"Online: {online_count}")
 
+    def create_password_box(self):
+        root = tk.Tk();
+       
+        # Create the StringVar tracker
+        user_password = tk.StringVar()
+
+        # Attach it to the Entry widget
+        entry_box = ttk.Entry(root, textvariable=user_password)
+        entry_box.pack(pady=10)
+
+        submit_btn = ttk.Button(root, text="Submit", command=lambda: self.check_password(user_password.get()))
+        submit_btn.pack()
+
     def create_widgets(self):
         # Menu Bar
         self.notebook = ttk.Notebook(self)
@@ -331,9 +348,11 @@ class DeviceApp(tk.Tk):
 
 
         _build_connect_tab(self, connect_tab, devices)
-        _build_config_tab(self, config_tab)
-        
-        _build_ejection_test_tab(self, test_tab, "TEST", devices)
+        # _build_config_tab(self, config_tab)
+        _build_locked_config_tab(self, config_tab)
+
+        _build_locked_ejection_test_tab(self, test_tab)
+        # _build_ejection_test_tab(self, test_tab, "TEST", devices)
         _build_telem_tab(self, telem_tab, "TELEM")
         _build_export_tab(self, export_tab)
         _build_home_tab(self, home_tab, devices)
