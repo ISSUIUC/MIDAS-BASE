@@ -163,9 +163,8 @@ class FeatherSubprocess:
     def is_online(self):
         return self.stat.lower() == "online"
 
-    def is_ready_for_console(self):
-        if not self.is_unidentified() and self.get_serial() is not None:
-            return True
+    def is_unidentified(self):
+        return self.type == "UNKNOWN" and self.stat == "NONE"
         
     def clean_visual(self):
         self.set_ip("")
