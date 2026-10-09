@@ -374,7 +374,11 @@ class DeviceApp(tk.Tk):
         "VX_MAX"
     ]
 
+
     def flash_midas(self):
+        #store current crc before updating
+        crc = self
+
         target_device = get_device(self.selected_device)
 
         # Simplify the guard. The old version checked both `not target_device`
@@ -420,6 +424,13 @@ class DeviceApp(tk.Tk):
                 else:
                     cmd = f"fsm {ch} {field} {data[field]}"
                 self._send_and_wait(target_device, cmd)
+
+        #fsm calculate
+        #send to feather duo
+        #return number, store as crc, store also as a text file
+        #fsm commit crc number
+        
+
 
     def load_midas(self):
         target_device = get_device(self.selected_device)
