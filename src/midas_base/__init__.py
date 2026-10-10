@@ -7,6 +7,7 @@ import subprocess
 from pathlib import Path
 import sys
 import os
+import re
 from serial.tools.list_ports import comports
 import time
 from midas_base.gss_combiner.util.feather_subprocess import FeatherSubprocess
@@ -393,6 +394,8 @@ class DeviceApp(tk.Tk):
         # Simplify: ternary instead of the if/else block
         cruise_lockout_num = 1 if cruise_lockout else 0
 
+        self.save_current_channel()
+
         # Replace the GLOBALS section with a loop over command strings.
         # Each command goes through self._send_and_wait instead of the old
         # pipe_conn.send + time.sleep(.2) pattern.
@@ -405,7 +408,9 @@ class DeviceApp(tk.Tk):
             f"fsm threshold MAIN_ALT {main_alt}",
             f"fsm threshold PYRO_FIRE_T {pyro_fire_t}",
         ]:
-            self._send_and_wait(target_device, cmd)
+            response = self._send_and_wait(target_device, cmd)
+            # print(f"[flash_midas 1] Sent command: {cmd}, got response: {response}")
+
 
         # CHANNELS
         # Same treatment here. Replace the pipe_conn.send + time.sleep
@@ -419,7 +424,20 @@ class DeviceApp(tk.Tk):
                     cmd = f"fsm {ch} {field} {value}"
                 else:
                     cmd = f"fsm {ch} {field} {data[field]}"
-                self._send_and_wait(target_device, cmd)
+                response = self._send_and_wait(target_device, cmd)
+                # print(f"[flash_midas 2] Sent command: {cmd}, got response: {response}")
+
+        #Calculate the CRC
+        crc_val = self._send_and_wait(target_device, "fsm calculate")
+        print(f"[flash_midas 3] Calculated CRC: {crc_val}")
+        
+        #Commit with the returned number
+        if crc_val:
+            commit_response = self._send_and_wait(target_device, f"fsm commit {crc_val.strip()}")
+            print(f"[flash_midas 4] Commit response: {commit_response}")
+        else:
+            print("[flash_midas 4] Error: CRC calculation timed out or returned empty.")
+
 
     def load_midas(self):
         target_device = get_device(self.selected_device)
