@@ -19,7 +19,7 @@ def check_password(self, password, parent):
     else:
         parent.destroy()
         test_tab = ttk.Frame(self.notebook)
-        self.notebook.add(test_tab, text="EJECTION_TEST")
+        self.notebook.insert(2, test_tab, text="EJECTION_TEST")
         # Switch tab to ejection test
         self.notebook.select(test_tab)
         
@@ -34,6 +34,8 @@ def _build_locked_ejection_test_tab(self, parent):
     entry = tk.Entry(parent, width=30)
     entry.pack(padx=10, pady=10)
     entry.place(relx=0.5, y=120, anchor="n")
+
+    entry.bind("<Return>", lambda event: check_password(self, entry.get(), parent))
 
     submit_password_button = ttk.Button(
             parent, 
