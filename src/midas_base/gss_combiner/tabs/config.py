@@ -37,7 +37,7 @@ def check_password(self, password, parent):
         parent.destroy() #right now, the order of the tabs gets switched around because we rebuild the tab
         config_tab = ttk.Frame(self.notebook)
         config_tab.grid(row=0, column=1) 
-        self.notebook.add(config_tab, text="CONFIG")
+        self.notebook.insert(1, config_tab, text="CONFIG")
         # Switch tab to config
         self.notebook.select(config_tab)
         _build_config_tab(self, config_tab)
@@ -51,6 +51,8 @@ def _build_locked_config_tab(self, parent):
     entry = tk.Entry(parent, width=30)
     entry.pack(padx=10, pady=10)
     entry.place(relx=0.5, y=120, anchor="n")
+
+    entry.bind("<Return>", lambda event: check_password(self, entry.get(), parent))
     
     submit_password_button = ttk.Button(
         parent, 
