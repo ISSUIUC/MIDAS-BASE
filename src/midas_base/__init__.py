@@ -310,7 +310,7 @@ class DeviceApp(tk.Tk):
         self.online_label.config(text=f"Online: {online_count}")
 
     def create_password_box(self):
-        root = tk.Tk();
+        root = tk.Tk()
        
         # Create the StringVar tracker
         user_password = tk.StringVar()
@@ -527,7 +527,7 @@ class DeviceApp(tk.Tk):
     def start_ground_station(self):
         # input("Open Docker Desktop and then press enter ")
         print("Trying to start Ground Station Docker Container...")
-        current_path = Path(__file__).resolve().parent / "GroundStation" / "compose.yml"
+        current_path = Path(__file__).resolve().parent / "gss_combiner" / "GroundStation" / "compose.yml"
         with subprocess.Popen(["docker-compose", "-f", current_path.absolute(), "up", "--build"], stdout=subprocess.PIPE, text=True, bufsize=1, stderr=subprocess.STDOUT) as proc:
             opened_browser = False
             for line in proc.stdout:
