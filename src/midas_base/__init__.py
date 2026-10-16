@@ -218,44 +218,6 @@ class DeviceApp(tk.Tk):
 
         self.after(50, self.update_stdouts)
 
-    def parser_midas(self, cmd, val):
-
-        for unit in [" MHz", " m/s", " ms", " m", " degrees"]:
-            val = val.replace(unit, "")
-        val = val.strip()
-
-        if "(true)" in val:
-            val = True
-        elif "(false)" in val:
-            val = False
-
-        if cmd == "serial get":
-            self.serial_no.set(val)
-        elif cmd == "frequency get":
-            self.midas_telem_freq.set(val)
-        elif cmd == "fsm threshold CRUISE_LOCKOUT_EN":
-            self.cruise_lockout.set(val)
-        elif cmd == "fsm threshold MAIN_ALT":
-            self.main_alt.set(val)
-        elif cmd == "fsm threshold PYRO_FIRE_T":
-            self.pyro_fire_t.set(val)
-
-        elif cmd.startswith("fsm ") and len(cmd.split()) == 3:
-
-            fsm, ch, field = cmd.split()
-
-            self.channel_entries_data[ch][field] = val
-
-            if self.selected_channel.get() == ch:
-                self.load_channel(ch)
-
-        elif cmd.startswith("serial ") and cmd.endswith(" get"):
-            # e.g. cmd = "serial 0 get", val = 008
-            self._radio_serials = getattr(self, '_radio_serials', {})
-            self._radio_serials[cmd.split()[1]] = val
-            self._ejection_stage_dropdown['values'] = list(self._radio_serials.values())
-
-
     def update_device_list(self):
         # Clear treeview
         for item in self.tree.get_children():
@@ -448,8 +410,6 @@ class DeviceApp(tk.Tk):
         #return number, store as crc, store also as a text file
         #fsm commit crc number
         
-
-
     def load_midas(self):
         target_device = get_device(self.selected_device)
 
@@ -523,6 +483,43 @@ class DeviceApp(tk.Tk):
         print(f"[load_midas] Timeout waiting for response to: {cmd}")
         return last_valid_line
 
+    def parser_midas(self, cmd, val):
+
+      for unit in [" MHz", " m/s", " ms", " m", " degrees"]:
+          val = val.replace(unit, "")
+      val = val.strip()
+
+      if "(true)" in val:
+          val = True
+      elif "(false)" in val:
+          val = False
+
+      if cmd == "serial get":
+          self.serial_no.set(val)
+      elif cmd == "frequency get":
+          self.midas_telem_freq.set(val)
+      elif cmd == "fsm threshold CRUISE_LOCKOUT_EN":
+          self.cruise_lockout.set(val)
+      elif cmd == "fsm threshold MAIN_ALT":
+          self.main_alt.set(val)
+      elif cmd == "fsm threshold PYRO_FIRE_T":
+          self.pyro_fire_t.set(val)
+
+      elif cmd.startswith("fsm ") and len(cmd.split()) == 3:
+
+          fsm, ch, field = cmd.split()
+
+          self.channel_entries_data[ch][field] = val
+
+          if self.selected_channel.get() == ch:
+              self.load_channel(ch)
+
+      elif cmd.startswith("serial ") and cmd.endswith(" get"):
+          # e.g. cmd = "serial 0 get", val = 008
+          self._radio_serials = getattr(self, '_radio_serials', {})
+          self._radio_serials[cmd.split()[1]] = val
+          self._ejection_stage_dropdown['values'] = list(self._radio_serials.values())
+
     def on_select(self, event):
         selected = self.tree.selection()
 
@@ -545,9 +542,19 @@ class DeviceApp(tk.Tk):
 
         values = self.tree.item(item, "values")
         self.selected_device = values[0]
+        device_type = values[1]
+        
         if hasattr(self, "device_label"):
             self.device_label.config(text=f"Selected: {self.selected_device}")
 
+        if hasattr(self, "board_type") and hasattr(self, "board_dropdown"):
+            for val in self.board_dropdown['values']:
+                if str(val) in str(device_type) or str(device_type) in str(val):
+                    # Only switch if the value is actually changing to avoid infinite callback loops
+                    if self.board_type.get() != val:
+                        self.board_type.set(val)
+                        self.switch_view()
+                    break
 
     def make_ground_station_thread(self):
         self.ground_station_thread = threading.Thread(group=None, target=self.start_ground_station)
@@ -691,7 +698,7 @@ class DeviceApp(tk.Tk):
 
         self.telem_frame.update_idletasks()
     
-    
+  
     def telem_dropdown_changed(self, event=None):
         new_val = self.telem_dropdown.get()
         print(f"the new val is {new_val}")
@@ -799,24 +806,70 @@ class DeviceApp(tk.Tk):
             print(f"Selected file: {file_path}")
             return file_path
 
-    def load_serial_no_feather(self):
-        if self.selected_device is None:
-            return False
-        device = get_device(self.selected_device)
-        if device is None:
-            return False
-        device.send_serial_msg("serial 1 get\n".encode())
-        time.sleep(0.2)
-        data = device.read_serial_lines()
-        serial_no = -1
-        for line in data:
-            try:
-                serial_no = int(line)
-            except:
-                continue
-        if serial_no == -1:
+    def flash_feather(self):
+
+        target_device = get_device(self.selected_device)
+
+        if not target_device:
+            print("No device connected")
             return
-        self.serial_number_1.set(str(serial_no).zfill(3))
+
+        serial_number_1, frequency_1, serial_number_2, frequency_2 = self.get_feather_globals()
+
+        self._send_and_wait(target_device, "echo 0")
+
+        for cmd in [
+            f"serial 0 set {serial_number_1}",
+            f"frequency 0 set {frequency_1}",
+            f"serial 1 set {serial_number_2}",
+            f"frequency 1 set {frequency_2}",
+        ]:
+            response = self._send_and_wait(target_device, cmd)
+            #print(f"[flash_feather 1] Sent command: {cmd}, got response: {response}")
+       
+
+    def load_feather(self):
+        target_device = get_device(self.selected_device)
+
+        if not target_device:
+            print("No device connected")
+            return
+
+        # Making sure the shell is in a clean state
+        self._send_and_wait(target_device, "echo 0")
+
+        globals_to_load = [
+            ("serial 0 get", self.serial_number_1),
+            ("frequency 0 get", self.frequency_1),
+            ("serial 1 get", self.serial_number_2),
+            ("frequency 1 get", self.frequency_2),
+        ]
+
+        for cmd, var in globals_to_load:
+            response = self._send_and_wait(target_device, cmd)
+            if response is None:
+                continue
+            self.parser_feather(cmd, response) #we have to parse a valid comannd
+
+    def parser_feather(self, cmd, val):
+
+        for unit in [" MHz", " m/s", " ms", " m", " degrees"]:
+            val = val.replace(unit, "")
+        val = val.strip()
+
+        if "(true)" in val:
+            val = True
+        elif "(false)" in val:
+            val = False
+
+        if cmd == "serial 0 get":
+            self.serial_number_1.set(val)
+        elif cmd == "frequency 0 get":
+            self.frequency_1.set(val)
+        elif cmd == "serial 1 get":
+            self.serial_number_2.set(val)
+        elif cmd == "frequency 1 get":
+            self.frequency_2.set(val)
 
     def set_serial_no_feather(self):
         if self.selected_device is None:
