@@ -213,13 +213,13 @@ def _build_feather_duo_tab(self, parent, view_container):
     ttk.Button(
         feather_frame,
         text="LOAD SERIAL NO FEATHER",
-        command=self.load_serial_no_feather
+        command=self.load_feather
     ).pack(pady=10)
 
     ttk.Button(
         feather_frame,
         text="SET SERIAL NO FEATHER",
-        command=self.set_serial_no_feather
+        command=self.flash_feather
     ).pack(pady=10)
 
     # ── MAIN HORIZONTAL SPLIT ──
@@ -278,6 +278,9 @@ def _build_config_tab(self, parent):
 
         def get_globals():
             return self.cruise_lockout.get(), self.main_alt.get(), self.pyro_fire_t.get(), self.serial_no.get(), self.midas_telem_freq.get()
+        
+        def get_feather_globals():
+            return self.serial_number_1.get(), self.frequency_1.get(), self.serial_number_2.get(), self.frequency_2.get()
 
         self.config_views[HwType.MIDAS_MINI] = midas_frame
         self.config_views[HwType.FEATHER_DUO] = feather_frame
@@ -293,6 +296,23 @@ def _build_config_tab(self, parent):
                 if name == selected:
                     frame.lift()
 
+            if hasattr(self, "tree"):
+                for item in self.tree.get_children():
+                    values = self.tree.item(item, "values")
+                    if not values or len(values) < 2:
+                        continue
+                    
+                    device_port = values[0]
+                    device_type = values[1]
+
+                    # Match selected hardware type against device in treeview
+                    if selected.lower() in str(device_type).lower() or str(device_type).lower() in selected.lower():
+                        self.tree.selection_set(item)
+                        self.selected_device = device_port
+                        if hasattr(self, "device_label"):
+                            self.device_label.config(text=f"Selected: {self.selected_device}")
+                        break
+
         # Bind dropdown change
         board_dropdown.bind("<<ComboboxSelected>>", switch_view)
 
@@ -300,3 +320,8 @@ def _build_config_tab(self, parent):
         switch_view()
 
         self.get_globals = get_globals
+
+        self.get_feather_globals = get_feather_globals
+
+        self.board_dropdown = board_dropdown
+        self.switch_view = switch_view
