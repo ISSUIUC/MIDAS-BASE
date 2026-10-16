@@ -35,6 +35,11 @@ class DeviceConsoleFrame(ttk.Frame):
         self.input_entry.pack(side="left", fill="x", expand=True, padx=(5, 5))
         self.input_entry.bind("<Return>", self._on_submit)
 
+        self.command_history = []
+        self.history_index = 0
+        self.input_entry.bind("<Up>", self._on_up_arrow)
+        self.input_entry.bind("<Down>", self._on_down_arrow)
+
         clear_btn = ttk.Button(input_frame, text="Clear", command=self._clear_console)
         clear_btn.pack(side="right", padx=(0, 5))
 
@@ -84,10 +89,34 @@ class DeviceConsoleFrame(ttk.Frame):
         # Clear the backend history list
         self.device.main_stdout.clear()
 
+    def _on_up_arrow(self, event=None):
+        """Navigate backwards through command history."""
+        if self.command_history and self.history_index > 0:
+            self.history_index -= 1
+            self.input_entry.delete(0, tk.END)
+            self.input_entry.insert(0, self.command_history[self.history_index])
+        return "break" # Prevents default tkinter behavior
+
+    def _on_down_arrow(self, event=None):
+        """Navigate forwards through command history."""
+        if self.command_history and self.history_index < len(self.command_history) - 1:
+            self.history_index += 1
+            self.input_entry.delete(0, tk.END)
+            self.input_entry.insert(0, self.command_history[self.history_index])
+        elif self.history_index == len(self.command_history) - 1:
+            # Clear the box if we hit the bottom of the history
+            self.history_index += 1
+            self.input_entry.delete(0, tk.END)
+        return "break"
+
     def _on_submit(self, event=None):
         """Triggered when user presses Enter or clicks Send."""
         cmd = self.input_entry.get().strip() 
         if cmd:
+            if not self.command_history or self.command_history[-1] != cmd:
+                self.command_history.append(cmd)
+            self.history_index = len(self.command_history)
+            
             self.input_entry.delete(0, tk.END)
             
             # Echo our command to the screen visually
