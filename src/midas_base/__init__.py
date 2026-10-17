@@ -143,15 +143,36 @@ class DeviceApp(tk.Tk):
             try:
                 ports = get_all_serial_ports()
                 existing_ports = [d.get_port() for d in devices]
+                #TODO: NEW STUFF
+                devices_to_keep = []
 
-                # Remove old ports that aren't connected
+                #TODO: NEW STUFF
+                # Implement missing-poll grace period
                 for d in devices:
                     if d.get_port() not in ports:
-                        print("[!] Deleting ", d.get_port())
-                        d.cleanup()
+                        d.missing_polls += 1
+                        # 10 missed cycles * 200ms = 2.0 second grace period
+                        if d.missing_polls > 10:
+                            print("[!] Deleting ", d.get_port())
+                            d.cleanup()
+                        else:
+                            devices_to_keep.append(d)
+                    else:
+                        d.missing_polls = 0
+                        devices_to_keep.append(d)
+
+                # Remove old ports that aren't connected
+                # for d in devices:
+                #     if d.get_port() not in ports:
+                #         print("[!] Deleting ", d.get_port())
+                #         d.cleanup()
                 
+                #TODO: NEW STUFF
+                # Update the global devices list to only the ones kept
+                devices = devices_to_keep
+
                 # Update the global devices list
-                devices = [d for d in devices if d.get_port() in ports]
+                # devices = [d for d in devices if d.get_port() in ports]
                 
                 # Add new ports
                 for p in ports:
