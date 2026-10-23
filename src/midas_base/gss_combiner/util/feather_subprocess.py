@@ -78,7 +78,7 @@ class FeatherSubprocess:
             self.main_stdout = self.main_stdout[1:]
 
         for outpt in self.__terminal_outputs:
-            outpt.config(state="normal")
+            outpt.configure(state="normal")
             msg_str: str = str(msg)
             if msg_str.startswith("[F]"):
                 outpt.insert("end", f"{msg_str}\n", "raw_out")
@@ -86,7 +86,7 @@ class FeatherSubprocess:
                 outpt.insert("end", f"{msg_str}\n", "user_in")
             else:
                 outpt.insert("end", f"{msg_str}\n")
-            outpt.config(state="disabled")
+            outpt.configure(state="disabled")
             outpt.see("end")
 
     IDENT_BOOT_DELAY = 3

@@ -310,7 +310,7 @@ def _build_config_tab(self, parent):
                         self.tree.selection_set(item)
                         self.selected_device = device_port
                         if hasattr(self, "device_label"):
-                            self.device_label.config(text=f"Selected: {self.selected_device}")
+                            self.device_label.configure(text=f"Selected: {self.selected_device}")
                         break
 
         # Bind dropdown change

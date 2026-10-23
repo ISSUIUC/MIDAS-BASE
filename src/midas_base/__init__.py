@@ -287,11 +287,11 @@ class DeviceApp(tk.Tk):
         # Update stats
         # Change len(devices) to len(visible_devices) so the count matches
         # the rows actually shown in the tree.
-        self.total_label.config(text=f"Total Devices: {len(visible_devices)}")
+        self.total_label.configure(text=f"Total Devices: {len(visible_devices)}")
         # Same story for the online count: iterate over visible_devices
         # instead of devices.
         online_count = sum(1 for d in visible_devices if d.is_online())
-        self.online_label.config(text=f"Online: {online_count}")
+        self.online_label.configure(text=f"Online: {online_count}")
 
     def create_password_box(self):
         root = tk.Tk()
@@ -558,7 +558,7 @@ class DeviceApp(tk.Tk):
                 # Guard the device_label update with hasattr - the label
                 # only exists if the connect tab has been built.
             if hasattr(self, "device_label"):
-                self.device_label.config(text="Select a device")
+                self.device_label.configure(text="Select a device")
             return
 
         values = self.tree.item(item, "values")
@@ -566,7 +566,7 @@ class DeviceApp(tk.Tk):
         device_type = values[1]
         
         if hasattr(self, "device_label"):
-            self.device_label.config(text=f"Selected: {self.selected_device}")
+            self.device_label.configure(text=f"Selected: {self.selected_device}")
 
         if hasattr(self, "board_type") and hasattr(self, "board_dropdown"):
             for val in self.board_dropdown['values']:
@@ -654,7 +654,7 @@ class DeviceApp(tk.Tk):
             return
         
         
-        self.input_file_thing.config(text=f"Uploaded file: {self.input_file}")
+        self.input_file_thing.configure(text=f"Uploaded file: {self.input_file}")
         data = []
         if self.input_file.endswith(".txt"):
             with open(self.input_file, "r") as f:
@@ -673,7 +673,7 @@ class DeviceApp(tk.Tk):
             self.data = data
             # Get the value from each data point
             self.update_export_frame()
-            self.input_start_frame.config(to=len(self.data))
+            self.input_start_frame.configure(to=len(self.data))
         elif self.input_file.endswith(".telem"):
             with open(self.input_file, "r") as f:
                 for line in f:
@@ -692,7 +692,7 @@ class DeviceApp(tk.Tk):
                 self.data[i]["unix"] = time_stamp_normalized
                 times.append(time_stamp_normalized)
             
-            self.input_start_frame.config(to=max(times))
+            self.input_start_frame.configure(to=max(times))
             self.update_export_frame()
         else:
             print("Invalid file. Please try again.")
@@ -785,8 +785,8 @@ class DeviceApp(tk.Tk):
 
         output.insert("end", f"<NEW SESSION>\n", "user_in")
 
-        output.config(state="disabled", yscrollcommand=scrollbar.set)
-        scrollbar.config(command=output.yview)
+        output.configure(state="disabled", yscrollcommand=scrollbar.set)
+        scrollbar.configure(command=output.yview)
 
         # Input field
         input_frame = ttk.Frame(term_win)
@@ -802,9 +802,9 @@ class DeviceApp(tk.Tk):
         def send_command(event=None):
             command = input_var.get().strip()
             if command:
-                output.config(state="normal")
+                output.configure(state="normal")
                 output.insert("end", f">> {command}\n", "user_in")
-                output.config(state="disabled")
+                output.configure(state="disabled")
                 output.see("end")
 
                 target_device.pipe_conn.send(command + "\n")
