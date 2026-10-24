@@ -43,25 +43,29 @@ def check_password(self, password, parent):
         _build_config_tab(self, config_tab)
 
 def _build_locked_config_tab(self, parent):
-    ttk.Label(parent,font=("Helvetica", 20)).pack(expand=True)
-        
-    message = ttk.Label(parent, text="Please enter the password")
-    message.place(relx=0.5, y=90, anchor="n")
-    
-    entry = tk.Entry(parent, width=30)
-    entry.pack(padx=10, pady=10)
-    entry.place(relx=0.5, y=120, anchor="n")
+    access_card = ttk.LabelFrame(parent, text="RESTRICTED AREA", padding=(28, 24))
+    access_card.place(relx=0.5, rely=0.5, anchor="center", width=440)
 
+    ttk.Label(access_card, text="CONFIGURATION ACCESS", style="Title.TLabel").pack(anchor="w")
+    ttk.Label(
+        access_card,
+        text="Enter the access key to unlock device configuration.",
+        style="Muted.TLabel",
+        wraplength=350,
+    ).pack(anchor="w", pady=(8, 20))
+
+    ttk.Label(access_card, text="ACCESS KEY", style="Section.TLabel").pack(anchor="w", pady=(0, 6))
+    entry = ttk.Entry(access_card, width=34, show="*")
+    entry.pack(fill="x", pady=(0, 14), ipady=3)
     entry.bind("<Return>", lambda event: check_password(self, entry.get(), parent))
-    
+
     submit_password_button = ttk.Button(
-        parent, 
-        text="Submit", 
-        padding=(20, 20), 
-        command=lambda: check_password(self, entry.get(), parent) #update this later to the check password function
+        access_card,
+        text="UNLOCK CONFIGURATION",
+        style="Accent.TButton",
+        command=lambda: check_password(self, entry.get(), parent),
     )
-    submit_password_button.place(relx=0.5, y=170)
-    submit_password_button.pack(pady=5)
+    submit_password_button.pack(fill="x")
 
 def _build_midas_tab(self, parent, view_container):
     midas_frame = ttk.Frame(view_container)
