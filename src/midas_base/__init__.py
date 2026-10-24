@@ -1006,6 +1006,9 @@ class DeviceApp(tk.Tk):
             # Get the value from each data point
             self.update_export_frame()
             self.input_start_frame.configure(to=len(self.data))
+            self.super_slider.config(to=len(self.data))
+            self.infra_slider.config(to=len(self.data))
+
         elif self.input_file.endswith(".telem"):
             with open(self.input_file, "r") as f:
                 for line in f:
@@ -1024,7 +1027,8 @@ class DeviceApp(tk.Tk):
                 self.data[i]["unix"] = time_stamp_normalized
                 times.append(time_stamp_normalized)
             
-            self.input_start_frame.configure(to=max(times))
+            self.super_slider.scale.config(to=max(times))
+            self.infra_slider.scale.configure(to=max(times))
             self.update_export_frame()
         else:
             print("Invalid file. Please try again.")
