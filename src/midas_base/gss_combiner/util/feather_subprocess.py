@@ -106,7 +106,7 @@ class FeatherSubprocess:
         else:
             self.stat = "IDENTIFYING..."
             self.type = "UNKNOWN"
-
+            time.sleep(1.5)
             self.__serial.write("ident\n".encode())
 
             time.sleep(0.5)
