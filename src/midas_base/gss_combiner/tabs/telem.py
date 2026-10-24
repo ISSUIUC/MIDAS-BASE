@@ -42,6 +42,23 @@ def _build_telem_tab(self, parent, name):
     ttk.Label(controls, text="START FRAME", style="Section.TLabel").grid(
         row=0, column=1, sticky="w", padx=(28, 0)
     )
+    self.start_label = ttk.Label(parent, text="Start Value", font=("Helvetica", 14)).pack()
+    self.super_slider = ttk.LabeledScale(
+        parent,
+        from_=0,
+        to=100,
+    )
+    self.super_slider.pack()
+    self.end_label = ttk.Label(parent, text="End Value", font=("Helvetica", 14)).pack()
+    self.infra_slider = ttk.LabeledScale(
+        parent,
+        from_=0,
+        to=100,
+    )
+    self.infra_slider.pack()
+
+    
+    
     self.input_start_frame = ttk.Spinbox(
         controls,
         from_=0,
@@ -50,7 +67,7 @@ def _build_telem_tab(self, parent, name):
         increment=100,
         width=12,
     )
-    self.input_start_frame.grid(row=1, column=1, sticky="w", padx=(28, 0), pady=(7, 0))
+    #self.input_start_frame.grid(row=1, column=1, sticky="w", padx=(28, 0), pady=(7, 0))
     controls.columnconfigure(2, weight=1)
 
     plot_panel = ttk.LabelFrame(content, text="SIGNAL VIEW", padding=(14, 12))
