@@ -33,8 +33,7 @@ class FeatherSubprocess:
         self.meta: str = ""
         self.stat: str = "NONE"
         self.type: HwType = "UNKNOWN"
-        #TODO: NEW STUFF
-        # self.__is_active = False
+        self.__is_active = False
         self.proc = None
         self.pipe_conn = None
         self.__ip = ""
@@ -58,9 +57,11 @@ class FeatherSubprocess:
         
         # Identification uses a background thread to prevent blocking
         # the main process during the sleep/retry cycles.
-        self.stat = "IDENTIFYING..."
-        self.__identify_thread = threading.Thread(target=self.check_type, daemon=True)
-        self.__identify_thread.start()
+        # self.stat = "IDENTIFYING..."
+        self.check_type()
+
+        # self.__identify_thread = threading.Thread(target=self.check_type, daemon=True)
+        # self.__identify_thread.start()
 
     def get_stat(self):
         return self.__ip, self.should_log
@@ -82,8 +83,8 @@ class FeatherSubprocess:
             msg_str: str = str(msg)
             if msg_str.startswith("[F]"):
                 outpt.insert("end", f"{msg_str}\n", "raw_out")
-            elif msg_str.startswith(">> "):
-                outpt.insert("end", f"{msg_str}\n", "user_in")
+            # elif msg_str.startswith(">> "):
+            #     outpt.insert("end", f"{msg_str}\n", "user_in")
             else:
                 outpt.insert("end", f"{msg_str}\n")
             outpt.configure(state="disabled")
@@ -94,120 +95,52 @@ class FeatherSubprocess:
 
     def check_type(self):
         print("Check type invoked on ", self.__port)
-        # if self.__is_active:
-        #     return # This will be taken over by another process already 
-
-        #TODO: NEW STUFF
-        if self._identify_cancelled.is_set():
-            return
+        if self.__is_active:
+            return # This will be taken over by another process already
         
         port_taken, self.__serial = is_port_taken(self.__port)
         if port_taken:
             self.stat = "NONE"
             self.type = "UNKNOWN"
             print("Sad!")
-            return
         else:
             self.stat = "IDENTIFYING..."
             self.type = "UNKNOWN"
+            time.sleep(1.5)
+            self.__serial.write("ident\n".encode())
 
-        try:
-            # time.sleep(FeatherSubprocess.IDENT_BOOT_DELAY)
+            time.sleep(0.5)
+            data = self.__serial.read_all().decode().splitlines()
+            for line in data:
+                print(f"[{self.__port}] {line}")
+                if line.startswith("IDENT_RESPONSE:"):
+                    ident_value = line[15:]
+                    
+                    if ident_value == "FEATHER_M0":
+                        self.type = "FEATHER M0"
+                        self.stat = "OFFLINE"
+                        # self.__serial.close()
+                        # self.__serial = None
+                        return
+                    
+                    if ident_value == "FEATHER_DUO":
+                        self.type = "FEATHER DUO"
+                        self.stat = "OFFLINE"
+                        # self.__serial.close()
+                        # self.__serial = None
+                        return
+
+                    if ident_value == "MIDAS_MINI":
+                        self.type = "MIDAS MINI"
+                        self.stat = "OFFLINE"
+                        # self.__serial.close()
+                        # self.__serial = None
+                        return
             
-            #TODO: NEW STUFF
-            for _ in range(FeatherSubprocess.IDENT_BOOT_DELAY * 10):
-                if self._identify_cancelled.is_set():
-                    return
-                time.sleep(0.1)
-
-            for attempt in range(FeatherSubprocess.IDENT_MAX_ATTEMPTS):
-                #TODO: NEW STUFF
-                if self._identify_cancelled.is_set():
-                    return
-
-                #TODO: NEW STUFF
-                with self._serial_lock:
-                    if self.__serial is None:
-                        return
-                    self.__serial.write(b"ident\r\n")
-                
-                # Send shell command using standard carriage return and newline
-                # self.__serial.write(b"ident\r\n")
-
-                time.sleep(0.5)
-
-                #TODO: NEW STUFF
-                if self._identify_cancelled.is_set():
-                    return
-                
-                #TODO: NEW STUFF
-                with self._serial_lock:
-                    if self.__serial is None:
-                        return
-                    data = self.__serial.read_all().decode(errors="ignore").splitlines()
-
-                # data = self.__serial.read_all().decode(errors="ignore").splitlines()
-
-                if not data:
-                    # No response yet this round - give it another attempt
-                    # instead of spinning on an empty list forever.
-                    continue
-
-                for line in data:
-                    print(f"[{self.__port}] {line}")
-                    if line.startswith("IDENT_RESPONSE:"):
-                        ident_value = line[15:]
-
-                        if ident_value == "FEATHER_M0":
-                            self.type = HwType.FEATHER_M0
-                            self.stat = "OFFLINE"
-                            return
-
-                        if ident_value == "FEATHER_DUO":
-                            self.type = HwType.FEATHER_DUO
-                            self.stat = "OFFLINE"
-                            return
-
-                        if ident_value == "MIDAS_MINI":
-                            self.type = HwType.MIDAS_MINI
-                            self.stat = "OFFLINE"
-                            return
-                    elif line.startswith("<done> 3"):
-                        time.sleep(0.5)
-                        #TODO: NEW STUFF
-                        with self._serial_lock:
-                            if self.__serial:
-                                self.__serial.write(b"ident\r\n")
-                        time.sleep(0.5)
-
-            # Ran out of attempts without a usable IDENT_RESPONSE.
             self.type = "UNKNOWN"
             self.stat = "NONE"
-
-            self.reset()
-
-            # if self.__serial is not None:
-            #     self.__serial.close()
-            #     self.__serial = None
-        
-        except (serial.SerialException, OSError, AttributeError) as e:
-            print(f"[{self.__port}] Failed to identify device: {e}")
-            self.type = "UNKNOWN"
-            self.stat = "NONE"
-            self.reset()
-
-        # except (serial.SerialException, OSError) as e:
-        #     # A write/read timeout or a port that vanished mid-identify
-        #     # should never take down the device-polling loop.
-        #     print(f"[{self.__port}] Failed to identify device: {e}")
-        #     self.type = "UNKNOWN"
-        #     self.stat = "NONE"
-        #     if self.__serial is not None:
-        #         try:
-        #             self.__serial.close()
-        #         except Exception:
-        #             pass
-        #         self.__serial = None
+            self.__serial.close()
+            self.__serial = None
 
     def is_online(self):
         return self.stat.lower() == "online"
@@ -265,10 +198,10 @@ class FeatherSubprocess:
 
     def send_serial_msg(self, msg):
         #TODO: NEW STUFF
-        with self._serial_lock:
-            if self.__serial is None:
-                raise serial.SerialException(f"No open serial connection on {self.__port}")
-            self.__serial.write(msg)
+        # with self._serial_lock:
+        if self.__serial is None:
+            raise serial.SerialException(f"No open serial connection on {self.__port}")
+        self.__serial.write(msg)
 
     def read_serial_lines(self):
         #TODO: NEW STUFF
