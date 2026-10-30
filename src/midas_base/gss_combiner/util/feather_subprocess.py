@@ -90,7 +90,7 @@ class FeatherSubprocess:
             outpt.see("end")
 
     IDENT_BOOT_DELAY = 3
-    IDENT_MAX_ATTEMPTS = 3
+    IDENT_MAX_ATTEMPTS = 6
 
     def check_type(self):
         print("Check type invoked on ", self.__port)
@@ -122,18 +122,23 @@ class FeatherSubprocess:
                 if self._identify_cancelled.is_set():
                     return
 
+                # Safely attempt to re-open the port if it was destroyed by a previous failure
                 with self._serial_lock:
                     if self.__serial is None:
-                        try:
-                            self.__serial = serial.Serial()
-                            self.__serial.port = self.__port
-                            self.__serial.write_timeout = 1
-                            self.__serial.timeout = 2
-                            self.__serial.dtr = False
-                            self.__serial.rts = False
-                            self.__serial.open()
-                        except serial.SerialException:
-                            pass
+                        import os
+                        # Only try opening if the file actually exists to avoid OS errors
+                        if os.path.exists(self.__port):
+                            try:
+                                temp_ser = serial.Serial()
+                                temp_ser.port = self.__port
+                                temp_ser.write_timeout = 1
+                                temp_ser.timeout = 2
+                                temp_ser.dtr = False
+                                temp_ser.rts = False
+                                temp_ser.open()
+                                self.__serial = temp_ser  # Only assign if open completely succeeds
+                            except Exception:
+                                pass
 
                 #TODO: NEW STUFF
                 try:
@@ -157,17 +162,13 @@ class FeatherSubprocess:
                             raise serial.SerialException("Port unavailable")
                         data = self.__serial.read_all().decode(errors="ignore").splitlines()
 
-                    # data = self.__serial.read_all().decode(errors="ignore").splitlines()
-
                     if not data:
-                        # No response yet this round - give it another attempt
-                        # instead of spinning on an empty list forever.
                         continue
 
                     for line in data:
                         print(f"[{self.__port}] {line}")
                         if line.startswith("IDENT_RESPONSE:"):
-                            ident_value = line[15:]
+                            ident_value = line[15:].strip()
 
                             if ident_value == "FEATHER_M0":
                                 self.type = HwType.FEATHER_M0
@@ -202,7 +203,11 @@ class FeatherSubprocess:
                             except Exception:
                                 pass
                             self.__serial = None
-                    time.sleep(1) # Give it time to re-enumerate before next attempt
+                    # macOS "zombie file" workaround: wait 2.5 seconds for true hardware re-enumeration
+                    for _ in range(25):
+                        if self._identify_cancelled.is_set():
+                            return
+                        time.sleep(0.1)
 
             # Ran out of attempts without a usable IDENT_RESPONSE.
             self.type = "UNKNOWN"
