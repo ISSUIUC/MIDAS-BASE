@@ -9,13 +9,13 @@ import io
 import serial # PySerial
 import paho.mqtt.client as mqtt
 
-import util.logger
+import midas_base.gss_combiner.util.logger
 
 cmd_copy_lock = threading.Lock()
 
 class TelemetryThread(threading.Thread):
     """A thread class handling all communications between COM ports to which telemetry devices are connected."""
-    def __init__(self, com_port, log_stream: util.logger.LoggerStream) -> None:
+    def __init__(self, com_port, log_stream: midas_base.gss_combiner.util.logger.LoggerStream) -> None:
         super(TelemetryThread, self).__init__(daemon=True)
         self.__log = log_stream
         self.__log.console_log(f"Opening {com_port}")
@@ -211,7 +211,7 @@ class TelemetryThread(threading.Thread):
 
 class MQTTThread(threading.Thread):
     """A thread to handle all MQTT communication for the GSS combiner service."""
-    def __init__(self, server_uri, log_stream: util.logger.LoggerStream) -> None:
+    def __init__(self, server_uri, log_stream: midas_base.gss_combiner.util.logger.LoggerStream) -> None:
         super(MQTTThread, self).__init__(daemon=True)
         self.__log = log_stream
         self.__uri = server_uri

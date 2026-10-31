@@ -6,8 +6,8 @@ from collections import deque
 import copy
 import time
 
-import util.mqtt as mqtt
-import util.logger
+import midas_base.gss_combiner.util.mqtt as mqtt
+import midas_base.gss_combiner.util.logger
 
 class TelemetryCombiner():
     """A class that combines multiple data streams from an antenna array into a single coherent stream to be interpreted by ISS telemetry systems
@@ -97,7 +97,7 @@ class TelemetryCombiner():
             
 
     # splitter_list is a list of TelemetryCombiners acting as relay recievers.
-    def __init__(self, stage, log_stream: util.logger.LoggerStream, filter=None):
+    def __init__(self, stage, log_stream: midas_base.gss_combiner.util.logger.LoggerStream, filter=None):
         if filter is None:
             filter = TelemetryCombiner.FilterOptions()
             

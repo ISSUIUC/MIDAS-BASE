@@ -1,0 +1,327 @@
+import hashlib
+import tkinter as tk
+from tkinter import ttk
+from pathlib import Path
+from tkinter import messagebox
+from serial.tools.list_ports import comports
+from midas_base.gss_combiner.hw.hwtypes import HwType
+
+def add_row(parent, label):
+    frame = ttk.Frame(parent)
+    frame.pack(fill="x", pady=2)
+    ttk.Label(frame, text=label, width=30).pack(side="left")
+
+    if "(bool)" in label:
+        var = tk.BooleanVar()
+
+        entry = ttk.Checkbutton(frame, variable=var)
+    else:
+        var = tk.StringVar()
+        
+        entry = ttk.Entry(frame, textvariable=var)
+
+    entry.pack(side="left", fill="x", expand=True)
+
+    return var
+
+def get_password(password):
+    user_attempt = hashlib.sha256(password.encode()).hexdigest()
+    return user_attempt
+
+def check_password(self, password, parent):
+    #compare the user's input with the correct password
+    if get_password(password) != "3a9023d5efaf19c2ef7d8f82da962a6a1a91c89911298c94fbad7d8525db1b8f":
+        messagebox.showerror("Error", "Incorrect password! Please try again.")
+
+    else:
+        parent.destroy() #right now, the order of the tabs gets switched around because we rebuild the tab
+        config_tab = ttk.Frame(self.notebook)
+        config_tab.grid(row=0, column=1) 
+        self.notebook.insert(1, config_tab, text="CONFIG")
+        # Switch tab to config
+        self.notebook.select(config_tab)
+        _build_config_tab(self, config_tab)
+
+def _build_locked_config_tab(self, parent):
+    ttk.Label(parent,font=("Helvetica", 20)).pack(expand=True)
+        
+    message = ttk.Label(parent, text="Please enter the password")
+    message.place(relx=0.5, y=90, anchor="n")
+    
+    entry = tk.Entry(parent, width=30)
+    entry.pack(padx=10, pady=10)
+    entry.place(relx=0.5, y=120, anchor="n")
+
+    entry.bind("<Return>", lambda event: check_password(self, entry.get(), parent))
+    
+    submit_password_button = ttk.Button(
+        parent, 
+        text="Submit", 
+        padding=(20, 20), 
+        command=lambda: check_password(self, entry.get(), parent) #update this later to the check password function
+    )
+    submit_password_button.place(relx=0.5, y=170)
+    submit_password_button.pack(pady=5)
+
+def _build_midas_tab(self, parent, view_container):
+    midas_frame = ttk.Frame(view_container)
+
+
+    # ── TITLE (CENTERED) ──
+    ttk.Label(
+        midas_frame,
+        text="MIDAS CONFIG",
+        font=("Helvetica", 16, "bold")
+    ).pack(pady=10)
+
+
+    ttk.Button(
+        midas_frame,
+        text="LOAD MIDAS CONFIG",
+        command=self.load_midas
+    ).pack(pady=10)
+
+    ttk.Button(
+        midas_frame,
+        text="SET MIDAS CONFIG",
+        command=self.flash_midas
+    ).pack(pady=10)
+
+
+    # ── MAIN HORIZONTAL SPLIT ──
+    main_row = ttk.Frame(midas_frame)
+    main_row.pack(fill="both", expand=True, padx=10, pady=10)
+
+    # LEFT: GLOBAL / PYRO
+    left_frame = ttk.LabelFrame(main_row, text="Global / Pyro Settings")
+    left_frame.pack(side="left", fill="both", expand=True, padx=5)
+
+    # RIGHT: CHANNEL CONFIG
+    right_frame = ttk.Frame(main_row)
+    right_frame.pack(side="right", fill="both", expand=True, padx=5)
+
+    # ── LEFT SIDE (GLOBAL / PYRO) ──
+    self.cruise_lockout = add_row(left_frame, "CRUISE_LOCKOUT_EN (bool)")
+    self.main_alt = add_row(left_frame, "MAIN_ALT (float)")
+    self.pyro_fire_t = add_row(left_frame, "PYRO_FIRE_T (float)")
+    self.serial_no = add_row(left_frame, "MIDAS Serial No")
+    self.midas_telem_freq = add_row(left_frame, "MIDAS Telemetry Frequency")
+
+    
+
+    # ── RIGHT SIDE (CHANNEL) ──
+
+    # Channel selector
+    selector_frame = ttk.Frame(right_frame)
+    selector_frame.pack(fill="x", pady=5)
+
+    ttk.Label(selector_frame, text="Channel:", width=10).pack(side="left")
+
+    self.selected_channel = tk.StringVar(value="A")
+
+    channel_dropdown = ttk.Combobox(
+        selector_frame,
+        textvariable=self.selected_channel,
+        values=["A", "B", "C", "D"],
+        state="readonly",
+        width=5
+    )
+    channel_dropdown.pack(side="left")
+
+
+    # Channel fields
+    channel_config = ttk.LabelFrame(right_frame, text="Channel Config")
+    channel_config.pack(fill="both", expand=True, pady=5)
+
+    self.channel_entries_ui = {}
+    self.channel_entries_data = {ch: {} for ch in ["A", "B", "C", "D"]}
+
+    fields = [
+        ("ENABLE", "(bool)"),
+        ("FSM_TRIGGER", "(int)"),
+        ("DELAY", "(float)"),
+        ("MAX_TILT", "(float)"),
+        ("AFTER_MOTOR", "(uint8)"),
+        ("LAUNCH_T_GT", "(float)"),
+        ("LAUNCH_T_LT", "(float)"),
+        ("VX_MIN", "(float)"),
+        ("VX_MAX", "(float)")
+    ]
+
+    for name, typ in fields:
+        self.channel_entries_ui[name] = add_row(channel_config, f"{name} {typ}")
+
+
+    # SAVE current channel
+    def save_current_channel():
+
+        ch = self.selected_channel.get()
+        for key, var in self.channel_entries_ui.items():
+            self.channel_entries_data[ch][key] = var.get()
+    
+    def load_channel(ch):
+        data = self.channel_entries_data[ch]
+        for key, var in self.channel_entries_ui.items():
+            if key in data:
+                var.set(data[key])
+                
+
+    # SWITCH
+    def on_channel_change(event):
+        load_channel(self.selected_channel.get())
+
+    channel_dropdown.bind("<<ComboboxSelected>>", on_channel_change)
+
+    # Init
+    load_channel("A")
+
+
+    # ── FLASH BUTTON (CENTERED BELOW) ──
+    flash_btn = ttk.Button(
+        midas_frame,
+        text="FLASH",
+        command=self.flash_midas,
+        width=20
+    )
+    flash_btn.pack(side="right", pady=20)
+
+    load_btn = ttk.Button(
+        midas_frame,
+        text="LOAD",
+        command=self.load_midas,
+        width=20
+    )
+    load_btn.pack(side="left", pady=20)
+
+    load_btn = ttk.Button(
+        midas_frame,
+        text="SAVE",
+        command=save_current_channel,
+        width=20
+    )
+    load_btn.pack(side="left", pady=20)
+
+    self.load_channel = load_channel
+    self.save_current_channel = save_current_channel
+    return midas_frame
+
+def _build_feather_duo_tab(self, parent, view_container):
+    feather_frame = ttk.Frame(view_container)
+    ttk.Label(feather_frame, text="Feather Duo Config View", font=("Helvetica", 14)).pack(pady=20)
+    midas_frame = ttk.Frame(view_container)
+
+    ttk.Button(
+        feather_frame,
+        text="LOAD SERIAL NO FEATHER",
+        command=self.load_feather
+    ).pack(pady=10)
+
+    ttk.Button(
+        feather_frame,
+        text="SET SERIAL NO FEATHER",
+        command=self.flash_feather
+    ).pack(pady=10)
+
+    # ── MAIN HORIZONTAL SPLIT ──
+    main_row = ttk.Frame(feather_frame)
+    main_row.pack(fill="both", expand=True, padx=10, pady=10)
+
+    # LEFT: Radio 1
+    left_frame = ttk.LabelFrame(main_row, text="Radio 1")
+    left_frame.pack(side="left", fill="both", expand=True, padx=5)
+
+    # RIGHT: Radio 2
+    right_frame = ttk.LabelFrame(main_row, text="Radio 2")
+    right_frame.pack(side="right", fill="both", expand=True, padx=5)
+
+    # ── LEFT SIDE (Radio 1) ──
+    self.frequency_1 = add_row(left_frame, "Frequency 1")
+    self.serial_number_1 = add_row(left_frame, "Serial Number 1")
+    
+    # ── RIGHT SIDE (Radio 2) ──
+    self.frequency_2 = add_row(right_frame, "Frequency 2")
+    self.serial_number_2 = add_row(right_frame, "Serial Number 1")
+
+    return feather_frame
+
+def _build_config_tab(self, parent):
+        container = ttk.Frame(parent)
+        container.pack(fill="both", expand=True, padx=10, pady=10)
+
+        # ── Top selector ──
+        selector_frame = ttk.Frame(container)
+        selector_frame.pack(fill="x", pady=(0, 10))
+
+        ttk.Label(selector_frame, text="Board Type:", font=("Helvetica", 12)).pack(side="left")
+
+        self.board_type = tk.StringVar(value=HwType.get_hardwares()[0].value)
+
+        board_dropdown = ttk.Combobox(
+            selector_frame,
+            textvariable=self.board_type,
+            values=[HwType.MIDAS_MINI.value, HwType.FEATHER_DUO],
+            state="readonly",
+            width=15
+        )
+        board_dropdown.pack(side="left", padx=10)
+
+        # ── View container (stacked frames) ──
+        self.config_views = {}
+
+        view_container = ttk.Frame(container)
+        view_container.pack(fill="both", expand=True)
+
+        # MIDAS view
+        midas_frame = _build_midas_tab(self, parent, view_container)
+        # Feather Duo view
+        feather_frame = _build_feather_duo_tab(self, parent, view_container)
+
+        def get_globals():
+            return self.cruise_lockout.get(), self.main_alt.get(), self.pyro_fire_t.get(), self.serial_no.get(), self.midas_telem_freq.get()
+        
+        def get_feather_globals():
+            return self.serial_number_1.get(), self.frequency_1.get(), self.serial_number_2.get(), self.frequency_2.get()
+
+        self.config_views[HwType.MIDAS_MINI] = midas_frame
+        self.config_views[HwType.FEATHER_DUO] = feather_frame
+
+        # Place all frames in same spot
+        for frame in self.config_views.values():
+            frame.place(relx=0, rely=0, relwidth=1, relheight=1)
+
+        # Function to switch views
+        def switch_view(*args):
+            selected = self.board_type.get()
+            for name, frame in self.config_views.items():
+                if name == selected:
+                    frame.lift()
+
+            if hasattr(self, "tree"):
+                for item in self.tree.get_children():
+                    values = self.tree.item(item, "values")
+                    if not values or len(values) < 2:
+                        continue
+                    
+                    device_port = values[0]
+                    device_type = values[1]
+
+                    # Match selected hardware type against device in treeview
+                    if selected.lower() in str(device_type).lower() or str(device_type).lower() in selected.lower():
+                        self.tree.selection_set(item)
+                        self.selected_device = device_port
+                        if hasattr(self, "device_label"):
+                            self.device_label.configure(text=f"Selected: {self.selected_device}")
+                        break
+
+        # Bind dropdown change
+        board_dropdown.bind("<<ComboboxSelected>>", switch_view)
+
+        # Show default view
+        switch_view()
+
+        self.get_globals = get_globals
+
+        self.get_feather_globals = get_feather_globals
+
+        self.board_dropdown = board_dropdown
+        self.switch_view = switch_view

@@ -1,0 +1,3 @@
+[submodule "src/midas_base/gss_combiner/GroundStation"]
+	path = src/midas_base/gss_combiner/GroundStation
+	url = https://github.com/ISSUIUC/GroundStation.git
