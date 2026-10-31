@@ -1007,7 +1007,7 @@ class DeviceApp(tk.Tk):
             self.update_export_frame()
             self.input_start_frame.configure(to=len(self.data))
             self.super_slider.config(to=len(self.data))
-            self.infra_slider.config(to=len(self.data))
+            self.infra_slider.configure(to=len(self.data))
 
         elif self.input_file.endswith(".telem"):
             with open(self.input_file, "r") as f:
@@ -1032,7 +1032,7 @@ class DeviceApp(tk.Tk):
             self.update_export_frame()
         else:
             print("Invalid file. Please try again.")
-        self.telem_dropdown_changed() # refresh graph if applicable
+        # self.telem_dropdown_changed() # refresh graph if applicable
     
     
     def update_export_frame(self):
@@ -1056,9 +1056,12 @@ class DeviceApp(tk.Tk):
         self.telem_frame.update_idletasks()
     
   
-    def telem_dropdown_changed(self, event=None):
+    def range_change(self, _):
         new_val = self.telem_dropdown.get()
         print(f"the new val is {new_val}")
+        start_range = self.super_slider.value
+        end_range = self.infra_slider.value
+        
         data_key = REVERSE_TELEM_DATA_KEYS.get(new_val)
         if data_key is None:
             return
@@ -1066,11 +1069,7 @@ class DeviceApp(tk.Tk):
         if self.canvas is not None:
             self.canvas.destroy(plt)
         
-        input_start_frame = 0
-        try:
-            input_start_frame = int(self.input_start_frame.get())
-        except:
-            print("Please input a valid number.")
+        
         
         ydata = [dp[data_key]
                     for dp in self.data
@@ -1081,7 +1080,7 @@ class DeviceApp(tk.Tk):
         actual_xdata = []
         actual_ydata = []
         for x, y in zip(xdata, ydata):
-            if (x >= input_start_frame):
+            if (start_range <= x <= end_range):
                 actual_xdata.append(x)
                 actual_ydata.append(y)
 
@@ -1089,6 +1088,11 @@ class DeviceApp(tk.Tk):
         new_canvas = Canvas(plt, self.telem_frame, actual_xdata, actual_ydata, **TELEM_DATA_KEYS[data_key])
         new_canvas.plot(plt)
         self.canvas = new_canvas
+
+    def start_range(self, value):
+        int_val = int(value)
+
+
 
 #def set_terminal_output(self, outpt):
        # self.__terminal_outputs.append(outpt)
@@ -1269,7 +1273,6 @@ def main() -> None:
     # Add one more scheduled call right here, to kick off the console
     # stream loop that drains serial output for every connected device:
     app.mainloop()
-
 
 if __name__ == "__main__":
     main()
