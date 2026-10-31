@@ -1,7 +1,29 @@
+import os
 import time
 import threading
 import serial
 from midas_base.gss_combiner.hw.hwtypes import HwType
+
+def safe_open_serial(ser):
+    """
+    Opens the serial port without triggering an ESP32-S3 reset.
+    Bypasses PySerial's default macOS/Linux behavior of clearing DTR before RTS.
+    """
+    if os.name == "nt":
+        # Windows handles DTR/RTS cleanly before opening
+        ser.dtr = False
+        ser.rts = False
+        ser.open()
+    else:
+        # macOS/Linux: Raise both lines, open, then clear RTS before DTR
+        ser.dtr = True
+        ser.rts = True
+        ser.open()
+        try:
+            ser.rts = False
+            ser.dtr = False
+        except OSError:
+            pass
 
 def is_port_taken(port):
     """
@@ -18,9 +40,8 @@ def is_port_taken(port):
         ser.port = port
         ser.write_timeout = 1
         ser.timeout = 2
-        ser.dtr = False
-        ser.rts = False
-        ser.open()
+        safe_open_serial(ser)
+        #ser.open()
         return False, ser  # Port is free
     except serial.SerialException as e:
         return True, None
@@ -125,7 +146,6 @@ class FeatherSubprocess:
                 # Safely attempt to re-open the port if it was destroyed by a previous failure
                 with self._serial_lock:
                     if self.__serial is None:
-                        import os
                         # Only try opening if the file actually exists to avoid OS errors
                         if os.path.exists(self.__port):
                             try:
@@ -133,8 +153,7 @@ class FeatherSubprocess:
                                 temp_ser.port = self.__port
                                 temp_ser.write_timeout = 1
                                 temp_ser.timeout = 2
-                                temp_ser.dtr = False
-                                temp_ser.rts = False
+                                safe_open_serial(temp_ser)
                                 temp_ser.open()
                                 self.__serial = temp_ser  # Only assign if open completely succeeds
                             except Exception:

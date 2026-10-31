@@ -18,6 +18,27 @@ import argparse
 import re
 import midas_base.gss_combiner.util.logger
 
+def safe_open_serial(ser):
+    """
+    Opens the serial port without triggering an ESP32-S3 reset.
+    Bypasses PySerial's default macOS/Linux behavior of clearing DTR before RTS.
+    """
+    if os.name == "nt":
+        # Windows handles DTR/RTS cleanly before opening
+        ser.dtr = False
+        ser.rts = False
+        ser.open()
+    else:
+        # macOS/Linux: Raise both lines, open, then clear RTS before DTR
+        ser.dtr = True
+        ser.rts = True
+        ser.open()
+        try:
+            ser.rts = False
+            ser.dtr = False
+        except OSError:
+            pass
+
 stdin_q = queue.Queue()
 
 def read_stdin():
@@ -374,10 +395,8 @@ class Midas_Standalone():
         self.__comport.baudrate = 9600
         self.__comport.write_timeout = 1
         self.__comport.timeout = 0.05
-        self.__comport.dtr = False
-        self.__comport.rts = False
-        
-        self.__comport.open()
+        safe_open_serial(self.__comport)
+
         self.__comport.reset_input_buffer()
 
         print(f"MIDAS MINI connected on {port}")
