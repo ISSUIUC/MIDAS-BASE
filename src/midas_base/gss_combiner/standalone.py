@@ -27,10 +27,14 @@ def read_stdin():
 # threading.Thread(target=read_stdin, daemon=True).start()  # Moved to TelemetryStandalone.run()
 
 COMMANDS = {
-    "PT": "pt",
-    "PAD": "arm",
-    "SAFE": "safe",
-    "IDLE": "arm"
+    "PT": "pt {serial}",
+    "PAD": "arm {serial}",
+    "SAFE": "safe {serial}",
+    "IDLE": "arm {serial}",
+    "CAMON": "cam {serial} on",
+    "CAMOFF": "cam {serial} off",
+    "RESET_KF": "kfr {serial}",
+    "VMUXT": "cam {serial} toggle"
 }
 SUSTAINER_SERIAL = 7
 BOOSTER_SERIAL = 10
@@ -265,7 +269,7 @@ class TelemetryStandalone():
                         if real_command is None:
                             self.__send_comport(f"{cmd.lower()} {serial_num}\r\n")
                         else:
-                            self.__send_comport(f"{real_command} {serial_num}\r\n")
+                            self.__send_comport(f"{real_command.replace("{serial}", str(serial_num))}\r\n")
                     self.__external_commands = []
 
                 if(len(packets) == 0):
