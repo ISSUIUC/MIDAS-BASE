@@ -46,15 +46,17 @@ def _build_telem_tab(self, parent, name):
     self.super_slider = ttk.LabeledScale(
         parent,
         from_=0,
-        to=100,
+        to=100
     )
     self.super_slider.pack()
     self.end_label = ttk.Label(parent, text="End Value", font=("Helvetica", 14)).pack()
     self.infra_slider = ttk.LabeledScale(
         parent,
         from_=0,
-        to=100,
+        to=100
     )
+    self.infra_slider.scale.configure(command=self.range_change)
+    self.super_slider.scale.configure(command=self.range_change)
     self.infra_slider.pack()
 
     
@@ -76,9 +78,9 @@ def _build_telem_tab(self, parent, name):
     plot_header.pack(fill="x", pady=(0, 10))
 
     dropdown_options = [value["title"] for key, value in TELEM_DATA_KEYS.items() if value.get("title") is not None]
-    self.telem_dropdown = ttk.Combobox(plot_header, values=dropdown_options, state="readonly", width=32)
-    self.telem_dropdown.bind("<<ComboboxSelected>>", self.telem_dropdown_changed)
-    self.telem_dropdown.pack(side="left")
+    self.telem_dropdown = ttk.Combobox(self.telem_frame, values=dropdown_options)
+    self.telem_dropdown.bind("<<ComboboxSelected>>", self.range_change)
+    self.telem_dropdown.pack()
 
     self.input_file_thing = ttk.Label(
         plot_header,
