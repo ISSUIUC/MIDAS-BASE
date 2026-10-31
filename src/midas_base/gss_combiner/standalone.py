@@ -16,7 +16,29 @@ import time
 import argparse
 
 import re
+# import util.logger
 import midas_base.gss_combiner.util.logger
+
+def safe_open_serial(ser):
+    """
+    Opens the serial port without triggering an ESP32-S3 reset.
+    Bypasses PySerial's default macOS/Linux behavior of clearing DTR before RTS.
+    """
+    if os.name == "nt":
+        # Windows handles DTR/RTS cleanly before opening
+        ser.dtr = False
+        ser.rts = False
+        ser.open()
+    else:
+        # macOS/Linux: Raise both lines, open, then clear RTS before DTR
+        ser.dtr = True
+        ser.rts = True
+        ser.open()
+        try:
+            ser.rts = False
+            ser.dtr = False
+        except OSError:
+            pass
 
 def safe_open_serial(ser):
     """
@@ -45,7 +67,20 @@ def read_stdin():
     for line in sys.stdin:
         stdin_q.put(line)
 
-threading.Thread(target=read_stdin, daemon=True).start()
+# threading.Thread(target=read_stdin, daemon=True).start()  # Moved to TelemetryStandalone.run()
+
+COMMANDS = {
+    "PT": "pt {serial}",
+    "PAD": "arm {serial}",
+    "SAFE": "safe {serial}",
+    "IDLE": "arm {serial}",
+    "CAMON": "cam {serial} on",
+    "CAMOFF": "cam {serial} off",
+    "RESET_KF": "kfr {serial}",
+    "VMUXT": "cam {serial} toggle"
+}
+SUSTAINER_SERIAL = 7
+BOOSTER_SERIAL = 10
 
 class TelemetryStandalone():
     """A thread class handling all communications between COM ports to which telemetry devices are connected."""
@@ -75,6 +110,7 @@ class TelemetryStandalone():
         try:
             self.__mqttclient.connect(self.__uri, port=1884)
         except:
+            
             print("UNABLE TO CONNECT TO ", self.__uri)
             print("REPORT_ERR", flush=True)
             sys.exit(1) 
@@ -85,6 +121,7 @@ class TelemetryStandalone():
         def on_message(client, userdata, msg): 
             """Callback function that will be called every time the client receives a message from the broker (something is added to the topic, commands to be sent)"""
             payload_str = msg.payload.decode()
+            print(f"Msg: {msg}")
             try:
                 payload_obj = json.loads(payload_str)
                 type = payload_obj["type"]
@@ -98,8 +135,8 @@ class TelemetryStandalone():
 
             
 
-            print(f"Recieved command '{raw_cmd}', acknowledged & sent to telemetry threads.")
-            # print(f"Recieved command '{raw_cmd}', acknowledged & sent to telemetry threads.")
+            print(f"Received command '{raw_cmd}', acknowledged & sent to telemetry threads.")
+            # print(f"Received command '{raw_cmd}', acknowledged & sent to telemetry threads.")
 
             ack_msg = {"type": "acknowledge_combiner", "ch": "Common", "cmd_ack": raw_cmd}
             self.__external_commands.append([raw_cmd, channel])
@@ -133,6 +170,11 @@ class TelemetryStandalone():
         """Append metadata to a packet to conform to GSS v1.1 packet structure"""
         # Incoming packets are of form {"type": "data", value: { ... }}
         time = datetime.now(timezone.utc)
+        serial_num = packet_json.get("value").get("serial")
+        if serial_num == SUSTAINER_SERIAL:
+            packet_json["value"]["is_sustainer"] = 1
+        else:
+            packet_json["value"]["is_sustainer"] = 0
 
         # Append timestamps :)
         return {'value': packet_json['value'], 'type': packet_json['type'], 'utc': str(time), 'unix': datetime.timestamp(time), 'src': self.__comport.name}
@@ -171,6 +213,7 @@ class TelemetryStandalone():
 
         
     def run(self) -> None:
+        threading.Thread(target=read_stdin, daemon=True).start()
         print("Starting background systems...")
         self.__mqttclient.loop_start()
         print(f"REPORT_OK:{self.__uri}", flush=True)
@@ -255,12 +298,21 @@ class TelemetryStandalone():
                         print(f"[TO FEATHER] '{cmd}' -- {chan}", flush=True)
 
                         chan_extension = ""
+                        serial_num = 0
                         if chan == "Control-Booster":
-                            chan_extension = "0"
+                            serial_num = BOOSTER_SERIAL
+                            # chan_extension = "0"
                         elif chan == "Control-Sustainer":
-                            chan_extension = "1"
+                            serial_num = SUSTAINER_SERIAL
+                            # chan_extension = "1"
 
-                        self.__send_comport(chan_extension + str(cmd) + "\r\n")
+                        # self.__send_comport()
+                        # self.__send_comport(chan_extension + str(cmd) + "\r\n")
+                        real_command = COMMANDS.get(cmd)
+                        if real_command is None:
+                            self.__send_comport(f"{cmd.lower()} {serial_num}\r\n")
+                        else:
+                            self.__send_comport(f"{real_command.replace("{serial}", str(serial_num))}\r\n")
                     self.__external_commands = []
 
                 if(len(packets) == 0):
@@ -380,7 +432,7 @@ class TelemetryStandalone():
             except Exception as e:
                 try:
                     print(f"[Telem {self.__comport.name}] Ran into an uncaught exception.. continuing gracefully.") # Always print these.
-                    print(e)
+                    print(f"Error was {e}")
                     # print(f"Error dump:", traceback.format_exc(e))
                 except Exception as e:
                     print("Exception while handling exception!")
@@ -426,6 +478,7 @@ class Midas_Standalone():
             time.sleep(0.01)
 
 def parse_params(arguments):
+    print("parsing params")
     arg_parser = argparse.ArgumentParser(
         prog='GSS Combiner (Standalone)',
         description="A system to take telemetry from different sources and pass it onto a MQTT broker for ground station visualization"
@@ -436,7 +489,6 @@ def parse_params(arguments):
     arg_parser.add_argument("--booster", action="store_true", help="Should we use booster?")
     arg_parser.add_argument("--sustainer", action="store_true", help="Should we use sustainer?")
     arg_parser.add_argument("--duo", action="store_true", help="Should we use feather duo?")
-    arg_parser.add_argument("--midas", action="store_true", help="Should we use midas?")
 
     arg_parser.add_argument("-n", "--no-log", action="store_true", help="Will not log data to logfiles for this run")
     arg_parser.add_argument("-i", "--ip", type=str, help="Connects to a specific IP. (Defaults to localhost)")
@@ -460,9 +512,6 @@ def parse_params(arguments):
         source = "Multistage"
         print("Disregarding any booster/sustainer commands. Initializing as Feather Duo.", flush=True)
 
-    if args.midas:
-        source = "Midas"
-
     ip = "localhost"
     if args.ip:
         ip = args.ip
@@ -470,11 +519,9 @@ def parse_params(arguments):
     return source, should_log, ip, args.port
 
 if __name__ == "__main__":
+    # print("got here")
     stage, should_log, ip, port = parse_params(sys.argv[1:])
 
-    if (stage == "Midas"):
-        t = Midas_Standalone(port, ip, stage, should_log)
-    else:
-        t = TelemetryStandalone(port, ip, stage, should_log)    
+    t = TelemetryStandalone(port, ip, stage, should_log)
 
     t.run()

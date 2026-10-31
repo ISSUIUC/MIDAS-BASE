@@ -64,13 +64,17 @@ def get_all_devices():
 
 def run_standalone_worker(pipe_conn, ip, port, stage_sel, do_log):
     # Add real logic here
-    script_path = os.path.join(os.path.dirname(__file__), "standalone.py")
-    print("Begin Subprocess:")
+    # script_path = os.path.join(os.path.dirname(__file__), "gss_combiner", "standalone.py")
+    os.write(2, b"\n>>> WORKER PROCESS OS WRITE SUCCESS <<<\n")
+    print("trying things", flush=True)
+    script_path = os.path.join(os.path.dirname(__file__), "gss_combiner", "standalone.py")
+    print(script_path, flush=True)
+    print("Begin Subprocess:", flush=True)
     log_t = "" if do_log else "--no-log"
     print(f"{sys.executable} {script_path} --ip {ip} --port {port} --{stage_sel} {log_t}")
 
     args = [
-        sys.executable, script_path,
+        sys.executable, "-u", script_path,
         "--ip", ip,
         "--port", port,
         f"--{stage_sel}"
@@ -141,7 +145,7 @@ class DeviceApp(tk.Tk):
     def update_devices(self):
             global devices
             try:
-                ports = get_all_serial_ports()
+                ports = get_feather_duo_ports()
                 existing_ports = [d.get_port() for d in devices]
                 #TODO: NEW STUFF
                 devices_to_keep = []
@@ -193,37 +197,74 @@ class DeviceApp(tk.Tk):
                 # This ensures the loop always continues even if an exception occurs
                 self.after(200, self.update_devices)
 
+    # def update_stdouts(self):
+    #     global devices
+    #     for device in devices:
+    #         if device.pipe_conn is None or device.proc is None:
+    #             continue
+
+    #         try:
+    #             while device.pipe_conn.poll():
+    #                 msg = device.pipe_conn.recv()
+    #                 print(msg)
+    #                 if msg.startswith("REPORT_OK:"):
+    #                     ip = msg[10:]
+    #                     device.stat = "ONLINE"
+    #                     device.set_ip(ip)
+
+    #                 if msg.startswith("REPORT_ERR"):
+    #                     print(f"[!] Process {device.get_port()} flagged an error and exited.")
+    #                     device.cleanup()
+    #                     print(f"[!] Process {device.get_port()} Triggering a device cleanup:")
+    #                     continue
+
+    #                 if msg.startswith("[TO MIDAS]"):
+    #                     self._last_cmd = msg[11:].strip()
+
+    #                 elif msg.startswith("[F]"):
+
+    #                     val = msg[3:].strip() #the stupid F bro i swear, ts was breaking everything
+
+    #                     self.parser_midas(self._last_cmd, val)
+
+    #                     self._last_cmd = None
+
+    #                 device.add_to_stdout(msg)
+    #         except:
+    #             print(f"[{device.get_port()}] Detected an unexpected pipe closure, but process isn't cleaned up!")
+    #             device.meta = "ERR: UNEXPECTED TERM"
+    #             device.has_errored = True
+    #             device.pipe_conn = None
+    #             device.cleanup()
+
+    #             for window in self.windows:
+    #                 _device, _window = window
+    #                 if device.get_port() == _device:
+    #                     _window.destroy()
+
+    #     self.after(50, self.update_stdouts)
     def update_stdouts(self):
         global devices
         for device in devices:
             if device.pipe_conn is None or device.proc is None:
                 continue
-
+            
             try:
                 while device.pipe_conn.poll():
                     msg = device.pipe_conn.recv()
+                    print(f"From subprocess: {msg}")
+                    # print("MSG RECV: ", msg)
                     if msg.startswith("REPORT_OK:"):
                         ip = msg[10:]
                         device.stat = "ONLINE"
                         device.set_ip(ip)
 
                     if msg.startswith("REPORT_ERR"):
+                        print(f"MSG: {msg}")
                         print(f"[!] Process {device.get_port()} flagged an error and exited.")
                         device.cleanup()
                         print(f"[!] Process {device.get_port()} Triggering a device cleanup:")
                         continue
-
-                    if msg.startswith("[TO MIDAS]"):
-                        self._last_cmd = msg[11:].strip()
-
-                    elif msg.startswith("[F]"):
-
-                        val = msg[3:].strip() #the stupid F bro i swear, ts was breaking everything
-
-                        self.parser_midas(self._last_cmd, val)
-
-                        self._last_cmd = None
-
                     device.add_to_stdout(msg)
             except:
                 print(f"[{device.get_port()}] Detected an unexpected pipe closure, but process isn't cleaned up!")
@@ -237,61 +278,105 @@ class DeviceApp(tk.Tk):
                     if device.get_port() == _device:
                         _window.destroy()
 
+
         self.after(50, self.update_stdouts)
+
+    # def update_device_list(self):
+    #     # Clear treeview
+    #     for item in self.tree.get_children():
+    #         self.tree.delete(item)
+
+    #     # Build a filtered list first so ports that never identified don't
+    #     # show up. Something like:
+    #     #     visible_devices = [d for d in devices if not d.is_unidentified()]
+    #     # and then loop over visible_devices instead of devices below.
+    #     # Same idea as the filter in update_devices - just don't touch
+    #     # anything the user can't act on.
+
+    #     visible_devices = [d for d in devices if not d.is_unidentified()]
+
+    #     # Re-insert updated device info
+    #     for _device in visible_devices:
+    #         device = _device.to_dict()
+            
+    #         # Change the disabled check: it used to trigger on both "NONE"
+    #         # and "IDENTIFYING...". Now it should only trigger on
+    #         # "IDENTIFYING..." - unidentified devices are already filtered
+    #         # out above, so anything still showing NONE is a real device
+    #         # we just haven't reached yet, and shouldn't be greyed out.
+    #         tags = ("disabled",) if device["status"].upper() == "IDENTIFYING..." else ()
+    #         if _device.is_online():
+    #             tags = tags + ("connected",)
+    #         if _device.has_errored:
+    #             tags = tags + ("errored",)
+    #         new_item = self.tree.insert(
+    #             "", "end",
+    #             iid=device["port"],
+    #             # Drop the server column from the values tuple. New tuple:
+    #             #     (device["port"], device["name"], device["status"], device["meta"])
+    #             values=(device["port"], device["name"], device["status"], device["meta"]),
+    #             tags=tags
+    #         )
+
+    #         if _device.get_port() == self.selected_device:
+    #             # Add a comment here explaining WHY this line matters (in your own words):
+    #             # the tree was just rebuilt from scratch, so the old item
+    #             # id (and its native selection state) no longer exists.
+    #             # Re-adding by the fresh item id restores the highlight
+    #             # without changing what self.selected_device says.
+    #             self.tree.selection_add(new_item)
+
+
+    #     # Update stats
+    #     # Change len(devices) to len(visible_devices) so the count matches
+    #     # the rows actually shown in the tree.
+    #     self.total_label.configure(text=f"Total Devices: {len(visible_devices)}")
+    #     # Same story for the online count: iterate over visible_devices
+    #     # instead of devices.
+    #     online_count = sum(1 for d in visible_devices if d.is_online())
+    #     self.online_label.configure(text=f"Online: {online_count}")
 
     def update_device_list(self):
         # Clear treeview
         for item in self.tree.get_children():
             self.tree.delete(item)
 
-        # Build a filtered list first so ports that never identified don't
-        # show up. Something like:
-        #     visible_devices = [d for d in devices if not d.is_unidentified()]
-        # and then loop over visible_devices instead of devices below.
-        # Same idea as the filter in update_devices - just don't touch
-        # anything the user can't act on.
-
-        visible_devices = [d for d in devices if not d.is_unidentified()]
-
         # Re-insert updated device info
-        for _device in visible_devices:
+        for _device in devices:
             device = _device.to_dict()
-            
-            # Change the disabled check: it used to trigger on both "NONE"
-            # and "IDENTIFYING...". Now it should only trigger on
-            # "IDENTIFYING..." - unidentified devices are already filtered
-            # out above, so anything still showing NONE is a real device
-            # we just haven't reached yet, and shouldn't be greyed out.
-            tags = ("disabled",) if device["status"].upper() == "IDENTIFYING..." else ()
+            tags = ("disabled",) if device["status"].upper() in ("NONE", "IDENTIFYING...") else ()
             if _device.is_online():
                 tags = tags + ("connected",)
             if _device.has_errored:
                 tags = tags + ("errored",)
             new_item = self.tree.insert(
                 "", "end",
+                iid=device["port"],
                 # Drop the server column from the values tuple. New tuple:
                 #     (device["port"], device["name"], device["status"], device["meta"])
                 values=(device["port"], device["name"], device["status"], device["meta"]),
                 tags=tags
             )
+            # new_item = self.tree.insert(
+            #     "", "end",
+            #     values=(device["port"], device["name"], device["status"], device["server"], device["meta"]),
+            #     tags=tags
+            # )
 
             if _device.get_port() == self.selected_device:
-                # Add a comment here explaining WHY this line matters (in your own words):
-                # the tree was just rebuilt from scratch, so the old item
-                # id (and its native selection state) no longer exists.
-                # Re-adding by the fresh item id restores the highlight
-                # without changing what self.selected_device says.
                 self.tree.selection_add(new_item)
 
+                if _device.is_online():
+                    self.inspect_btn.configure(state="normal")
+                    self.connect_btn.configure(text="Disconnect")
+                else:
+                    self.inspect_btn.configure(state="disabled")
+                    self.connect_btn.configure(text="Connect")
 
         # Update stats
-        # Change len(devices) to len(visible_devices) so the count matches
-        # the rows actually shown in the tree.
-        self.total_label.config(text=f"Total Devices: {len(visible_devices)}")
-        # Same story for the online count: iterate over visible_devices
-        # instead of devices.
-        online_count = sum(1 for d in visible_devices if d.is_online())
-        self.online_label.config(text=f"Online: {online_count}")
+        self.total_label.configure(text=f"Total Devices: {len(devices)}")
+        online_count = sum(1 for d in devices if d.to_dict()["status"].lower() == "online")
+        self.online_label.configure(text=f"Online: {online_count}")
 
     def create_password_box(self):
         root = tk.Tk()
@@ -540,42 +625,85 @@ class DeviceApp(tk.Tk):
           self._radio_serials = getattr(self, '_radio_serials', {})
           self._radio_serials[cmd.split()[1]] = val
           self._ejection_stage_dropdown['values'] = list(self._radio_serials.values())
-
     def on_select(self, event):
         selected = self.tree.selection()
+        if selected:
+            item = selected[0]
+            tags = self.tree.item(item, "tags")
 
-        # Simplify: bail early if nothing's selected, then the rest of the
-        # function doesn't need to be indented inside an if-block.
-        if not selected:
-            return 
-        item = selected[0]
-        tags = self.tree.item(item, "tags")
+            if "disabled" in tags:
+                # Prevent selection visually
+                self.tree.selection_remove(item)
+                self.selected_device = None
+                self.device_label.configure(text="Select a device")
+                self.connect_btn.configure(state="disabled")
+                self.inspect_btn.configure(state="disabled")
+                self.do_log_checkbox.configure(state="disabled")
+                return
 
-        if "disabled" in tags:
-            # Prevent selection visually
-            self.tree.selection_remove(item)
-            self.selected_device = None
-                # Guard the device_label update with hasattr - the label
-                # only exists if the connect tab has been built.
-            if hasattr(self, "device_label"):
-                self.device_label.config(text="Select a device")
-            return
+            values = self.tree.item(item, "values")
+            is_same_select = values[0] == self.selected_device
+            self.selected_device = values[0]
+            self.device_label.configure(text=f"Selected: {self.selected_device}")
+            self.connect_btn.configure(state="normal")
+            self.do_log_checkbox.configure(state="normal")
 
-        values = self.tree.item(item, "values")
-        self.selected_device = values[0]
-        device_type = values[1]
+            _device = get_device(self.selected_device)
+
+            if not is_same_select:
+                if _device.type == "FEATHER M0":
+                    self.radio1.configure(state="normal")
+                    self.radio2.configure(state="normal")
+                    self.radio3.configure(state="disabled")
+                    self.stage_sel.set("sustainer")
+
+                if _device.type == "FEATHER DUO":
+                    self.radio1.configure(state="disabled")
+                    self.radio2.configure(state="disabled")
+                    self.radio3.configure(state="normal")
+                    self.stage_sel.set("duo")
+
+                if _device.is_online():
+                    print("here")
+                    dev_ip, dev_sl = _device.get_stat()
+                    self.do_log.set(dev_sl)
+                    self.ip_entry.delete(0, tk.END) # Clear existing content
+                    self.ip_entry.insert(0, dev_ip)
+                    self.stage_sel.set(_device.stage_sel)
+        # selected = self.tree.selection()
+
+        # # Simplify: bail early if nothing's selected, then the rest of the
+        # # function doesn't need to be indented inside an if-block.
+        # if not selected:
+        #     return 
+        # item = selected[0]
+        # tags = self.tree.item(item, "tags")
+
+        # if "disabled" in tags:
+        #     # Prevent selection visually
+        #     self.tree.selection_remove(item)
+        #     self.selected_device = None
+        #         # Guard the device_label update with hasattr - the label
+        #         # only exists if the connect tab has been built.
+        #     if hasattr(self, "device_label"):
+        #         self.device_label.configure(text="Select a device")
+        #     return
+
+        # values = self.tree.item(item, "values")
+        # self.selected_device = values[0]
+        # device_type = values[1]
         
-        if hasattr(self, "device_label"):
-            self.device_label.config(text=f"Selected: {self.selected_device}")
+        # if hasattr(self, "device_label"):
+        #     self.device_label.configure(text=f"Selected: {self.selected_device}")
 
-        if hasattr(self, "board_type") and hasattr(self, "board_dropdown"):
-            for val in self.board_dropdown['values']:
-                if str(val) in str(device_type) or str(device_type) in str(val):
-                    # Only switch if the value is actually changing to avoid infinite callback loops
-                    if self.board_type.get() != val:
-                        self.board_type.set(val)
-                        self.switch_view()
-                    break
+        # if hasattr(self, "board_type") and hasattr(self, "board_dropdown"):
+        #     for val in self.board_dropdown['values']:
+        #         if str(val) in str(device_type) or str(device_type) in str(val):
+        #             # Only switch if the value is actually changing to avoid infinite callback loops
+        #             if self.board_type.get() != val:
+        #                 self.board_type.set(val)
+        #                 self.switch_view()
+        #             break
 
     def make_ground_station_thread(self):
         self.ground_station_thread = threading.Thread(group=None, target=self.start_ground_station)
@@ -585,6 +713,7 @@ class DeviceApp(tk.Tk):
         # input("Open Docker Desktop and then press enter ")
         print("Trying to start Ground Station Docker Container...")
         current_path = Path(__file__).resolve().parent / "gss_combiner" / "GroundStation" / "compose.yml"
+        print(current_path)
         with subprocess.Popen(["docker-compose", "-f", current_path.absolute(), "up", "--build"], stdout=subprocess.PIPE, text=True, bufsize=1, stderr=subprocess.STDOUT) as proc:
             opened_browser = False
             for line in proc.stdout:
@@ -639,8 +768,19 @@ class DeviceApp(tk.Tk):
             target_device.meta = f"{self.stage_sel.get().upper()} (LOG: {log_str})"
             target_device.stage_sel = self.stage_sel.get()
             target_device.pipe_conn, child_conn = multiprocessing.Pipe()
+            print("trying to run standalone")
             target_device.proc = multiprocessing.Process(target=run_standalone_worker, args=(child_conn, ip, self.selected_device, self.stage_sel.get(), should_log))
+            # run_standalone_worker(child_conn, ip, self.selected_device, self.stage_sel.get(), should_log)
+            print("trying to run standalone")
             target_device.proc.start()
+            time.sleep(0.5)
+
+            print("Is alive?:", target_device.proc.is_alive())
+            print("Exit code:", target_device.proc.exitcode)
+            # child_conn.close()
+            # target_device.proc.join()
+            print("started")
+
 
     def inspect_window(self):
         if self.selected_device:
@@ -654,7 +794,7 @@ class DeviceApp(tk.Tk):
             return
         
         
-        self.input_file_thing.config(text=f"Uploaded file: {self.input_file}")
+        self.input_file_thing.configure(text=f"Uploaded file: {self.input_file}")
         data = []
         if self.input_file.endswith(".txt"):
             with open(self.input_file, "r") as f:
@@ -673,7 +813,7 @@ class DeviceApp(tk.Tk):
             self.data = data
             # Get the value from each data point
             self.update_export_frame()
-            self.input_start_frame.config(to=len(self.data))
+            self.input_start_frame.configure(to=len(self.data))
         elif self.input_file.endswith(".telem"):
             with open(self.input_file, "r") as f:
                 for line in f:
@@ -692,7 +832,7 @@ class DeviceApp(tk.Tk):
                 self.data[i]["unix"] = time_stamp_normalized
                 times.append(time_stamp_normalized)
             
-            self.input_start_frame.config(to=max(times))
+            self.input_start_frame.configure(to=max(times))
             self.update_export_frame()
         else:
             print("Invalid file. Please try again.")
@@ -785,8 +925,8 @@ class DeviceApp(tk.Tk):
 
         output.insert("end", f"<NEW SESSION>\n", "user_in")
 
-        output.config(state="disabled", yscrollcommand=scrollbar.set)
-        scrollbar.config(command=output.yview)
+        output.configure(state="disabled", yscrollcommand=scrollbar.set)
+        scrollbar.configure(command=output.yview)
 
         # Input field
         input_frame = ttk.Frame(term_win)
@@ -802,9 +942,9 @@ class DeviceApp(tk.Tk):
         def send_command(event=None):
             command = input_var.get().strip()
             if command:
-                output.config(state="normal")
+                output.configure(state="normal")
                 output.insert("end", f">> {command}\n", "user_in")
-                output.config(state="disabled")
+                output.configure(state="disabled")
                 output.see("end")
 
                 target_device.pipe_conn.send(command + "\n")
@@ -907,9 +1047,14 @@ class DeviceApp(tk.Tk):
         self.load_serial_no_feather()
 
 def main() -> None:
+    multiprocessing.freeze_support()
     app = DeviceApp()
     app.after(1000, app.update_devices)
     app.after(50, app.update_stdouts)
     # Add one more scheduled call right here, to kick off the console
     # stream loop that drains serial output for every connected device:
     app.mainloop()
+
+
+if __name__ == "__main__":
+    main()

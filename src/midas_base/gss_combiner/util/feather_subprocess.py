@@ -54,8 +54,7 @@ class FeatherSubprocess:
         self.meta: str = ""
         self.stat: str = "NONE"
         self.type: HwType = "UNKNOWN"
-        #TODO: NEW STUFF
-        # self.__is_active = False
+        self.__is_active = False
         self.proc = None
         self.pipe_conn = None
         self.__ip = ""
@@ -79,9 +78,11 @@ class FeatherSubprocess:
         
         # Identification uses a background thread to prevent blocking
         # the main process during the sleep/retry cycles.
-        self.stat = "IDENTIFYING..."
-        self.__identify_thread = threading.Thread(target=self.check_type, daemon=True)
-        self.__identify_thread.start()
+        # self.stat = "IDENTIFYING..."
+        self.check_type()
+
+        # self.__identify_thread = threading.Thread(target=self.check_type, daemon=True)
+        # self.__identify_thread.start()
 
     def get_stat(self):
         return self.__ip, self.should_log
@@ -99,15 +100,15 @@ class FeatherSubprocess:
             self.main_stdout = self.main_stdout[1:]
 
         for outpt in self.__terminal_outputs:
-            outpt.config(state="normal")
+            outpt.configure(state="normal")
             msg_str: str = str(msg)
             if msg_str.startswith("[F]"):
                 outpt.insert("end", f"{msg_str}\n", "raw_out")
-            elif msg_str.startswith(">> "):
-                outpt.insert("end", f"{msg_str}\n", "user_in")
+            # elif msg_str.startswith(">> "):
+            #     outpt.insert("end", f"{msg_str}\n", "user_in")
             else:
                 outpt.insert("end", f"{msg_str}\n")
-            outpt.config(state="disabled")
+            outpt.configure(state="disabled")
             outpt.see("end")
 
     IDENT_BOOT_DELAY = 3
@@ -124,7 +125,6 @@ class FeatherSubprocess:
             self.stat = "NONE"
             self.type = "UNKNOWN"
             print("Sad!")
-            return
         else:
             self.stat = "IDENTIFYING..."
             self.type = "UNKNOWN"
@@ -312,10 +312,10 @@ class FeatherSubprocess:
 
     def send_serial_msg(self, msg):
         #TODO: NEW STUFF
-        with self._serial_lock:
-            if self.__serial is None:
-                raise serial.SerialException(f"No open serial connection on {self.__port}")
-            self.__serial.write(msg)
+        # with self._serial_lock:
+        if self.__serial is None:
+            raise serial.SerialException(f"No open serial connection on {self.__port}")
+        self.__serial.write(msg)
 
     def read_serial_lines(self):
         #TODO: NEW STUFF

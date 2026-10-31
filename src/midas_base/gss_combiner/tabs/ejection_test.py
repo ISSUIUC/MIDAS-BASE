@@ -165,10 +165,10 @@ def send_command(self, command, stage_var):
         self.command_sender.send_telemetry_command(command, stage_var)
 
 def force_safe(self):
-    self.fire_A_button.config(state="disabled")
-    self.fire_B_button.config(state="disabled")
-    self.fire_C_button.config(state="disabled")
-    self.fire_D_button.config(state="disabled")
+    self.fire_A_button.configure(state="disabled")
+    self.fire_B_button.configure(state="disabled")
+    self.fire_C_button.configure(state="disabled")
+    self.fire_D_button.configure(state="disabled")
     print("force safe")
 
     if hasattr(self, "pyro_timer"):
@@ -183,10 +183,10 @@ def pyro_test(self):
 
     stage = self.stage_var.get()
     print(f"pyro test on {stage}")
-    self.fire_A_button.config(state="normal")
-    self.fire_B_button.config(state="normal")
-    self.fire_C_button.config(state="normal")
-    self.fire_D_button.config(state="normal")
+    self.fire_A_button.configure(state="normal")
+    self.fire_B_button.configure(state="normal")
+    self.fire_C_button.configure(state="normal")
+    self.fire_D_button.configure(state="normal")
     print("pyro test")
 
     if hasattr(self, "pyro_timer"):
