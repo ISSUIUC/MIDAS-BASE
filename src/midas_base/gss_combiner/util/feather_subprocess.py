@@ -1,7 +1,29 @@
+import os
 import time
 import threading
 import serial
 from midas_base.gss_combiner.hw.hwtypes import HwType
+
+def safe_open_serial(ser):
+    """
+    Opens the serial port without triggering an ESP32-S3 reset.
+    Bypasses PySerial's default macOS/Linux behavior of clearing DTR before RTS.
+    """
+    if os.name == "nt":
+        # Windows handles DTR/RTS cleanly before opening
+        ser.dtr = False
+        ser.rts = False
+        ser.open()
+    else:
+        # macOS/Linux: Raise both lines, open, then clear RTS before DTR
+        ser.dtr = True
+        ser.rts = True
+        ser.open()
+        try:
+            ser.rts = False
+            ser.dtr = False
+        except OSError:
+            pass
 
 def is_port_taken(port):
     """
@@ -18,9 +40,8 @@ def is_port_taken(port):
         ser.port = port
         ser.write_timeout = 1
         ser.timeout = 2
-        ser.dtr = False
-        ser.rts = False
-        ser.open()
+        safe_open_serial(ser)
+        #ser.open()
         return False, ser  # Port is free
     except serial.SerialException as e:
         return True, None
@@ -91,10 +112,13 @@ class FeatherSubprocess:
             outpt.see("end")
 
     IDENT_BOOT_DELAY = 3
-    IDENT_MAX_ATTEMPTS = 3
+    IDENT_MAX_ATTEMPTS = 6
 
     def check_type(self):
         print("Check type invoked on ", self.__port)
+        #TODO: NEW STUFF
+        if self._identify_cancelled.is_set():
+            return
         if self.__is_active:
             return # This will be taken over by another process already
         
@@ -107,40 +131,132 @@ class FeatherSubprocess:
             self.stat = "IDENTIFYING..."
             self.type = "UNKNOWN"
 
-            self.__serial.write("ident\n".encode())
-
-            time.sleep(0.5)
-            data = self.__serial.read_all().decode().splitlines()
-            for line in data:
-                print(f"[{self.__port}] {line}")
-                if line.startswith("IDENT_RESPONSE:"):
-                    ident_value = line[15:]
-                    
-                    if ident_value == "FEATHER_M0":
-                        self.type = "FEATHER M0"
-                        self.stat = "OFFLINE"
-                        # self.__serial.close()
-                        # self.__serial = None
-                        return
-                    
-                    if ident_value == "FEATHER_DUO":
-                        self.type = "FEATHER DUO"
-                        self.stat = "OFFLINE"
-                        # self.__serial.close()
-                        # self.__serial = None
-                        return
-
-                    if ident_value == "MIDAS_MINI":
-                        self.type = "MIDAS MINI"
-                        self.stat = "OFFLINE"
-                        # self.__serial.close()
-                        # self.__serial = None
-                        return
+        try:
+            # time.sleep(FeatherSubprocess.IDENT_BOOT_DELAY)
             
+            #TODO: NEW STUFF
+            for _ in range(FeatherSubprocess.IDENT_BOOT_DELAY * 10):
+                if self._identify_cancelled.is_set():
+                    return
+                time.sleep(0.1)
+
+            for attempt in range(FeatherSubprocess.IDENT_MAX_ATTEMPTS):
+                #TODO: NEW STUFF
+                if self._identify_cancelled.is_set():
+                    return
+
+                # Safely attempt to re-open the port if it was destroyed by a previous failure
+                with self._serial_lock:
+                    if self.__serial is None:
+                        # Only try opening if the file actually exists to avoid OS errors
+                        if os.path.exists(self.__port):
+                            try:
+                                temp_ser = serial.Serial()
+                                temp_ser.port = self.__port
+                                temp_ser.write_timeout = 1
+                                temp_ser.timeout = 2
+                                safe_open_serial(temp_ser)
+                                temp_ser.open()
+                                self.__serial = temp_ser  # Only assign if open completely succeeds
+                            except Exception:
+                                pass
+
+                #TODO: NEW STUFF
+                try:
+                    with self._serial_lock:
+                        if self.__serial is None:
+                            raise serial.SerialException("Port unavailable")
+                        self.__serial.write(b"ident\r\n")
+                    
+                    # Send shell command using standard carriage return and newline
+                    # self.__serial.write(b"ident\r\n")
+
+                    time.sleep(0.5)
+
+                    #TODO: NEW STUFF
+                    if self._identify_cancelled.is_set():
+                        return
+                    
+                    #TODO: NEW STUFF
+                    with self._serial_lock:
+                        if self.__serial is None:
+                            raise serial.SerialException("Port unavailable")
+                        data = self.__serial.read_all().decode(errors="ignore").splitlines()
+
+                    if not data:
+                        continue
+
+                    for line in data:
+                        print(f"[{self.__port}] {line}")
+                        if line.startswith("IDENT_RESPONSE:"):
+                            ident_value = line[15:].strip()
+
+                            if ident_value == "FEATHER_M0":
+                                self.type = HwType.FEATHER_M0
+                                self.stat = "OFFLINE"
+                                return
+
+                            if ident_value == "FEATHER_DUO":
+                                self.type = HwType.FEATHER_DUO
+                                self.stat = "OFFLINE"
+                                return
+
+                            if ident_value == "MIDAS_MINI":
+                                self.type = HwType.MIDAS_MINI
+                                self.stat = "OFFLINE"
+                                return
+                            
+                        elif line.startswith("<done> 3"):
+                            time.sleep(0.5)
+                            #TODO: NEW STUFF
+                            with self._serial_lock:
+                                if self.__serial:
+                                    self.__serial.write(b"ident\r\n")
+                            time.sleep(0.5)
+
+                except (serial.SerialException, OSError) as e:
+                    print(f"[{self.__port}] Attempt {attempt+1} failed: {e}. Recovering...")
+                    # Port likely dropped off the USB bus. Destroy the dead handle.
+                    with self._serial_lock:
+                        if self.__serial:
+                            try:
+                                self.__serial.close()
+                            except Exception:
+                                pass
+                            self.__serial = None
+                    # macOS "zombie file" workaround: wait 2.5 seconds for true hardware re-enumeration
+                    for _ in range(25):
+                        if self._identify_cancelled.is_set():
+                            return
+                        time.sleep(0.1)
+
+            # Ran out of attempts without a usable IDENT_RESPONSE.
             self.type = "UNKNOWN"
             self.stat = "NONE"
-            self.__serial.close()
-            self.__serial = None
+            self.reset()
+
+            # if self.__serial is not None:
+            #     self.__serial.close()
+            #     self.__serial = None
+        
+        except (serial.SerialException, OSError, AttributeError) as e:
+            print(f"[{self.__port}] Failed to identify device: {e}")
+            self.type = "UNKNOWN"
+            self.stat = "NONE"
+            self.reset()
+
+        # except (serial.SerialException, OSError) as e:
+        #     # A write/read timeout or a port that vanished mid-identify
+        #     # should never take down the device-polling loop.
+        #     print(f"[{self.__port}] Failed to identify device: {e}")
+        #     self.type = "UNKNOWN"
+        #     self.stat = "NONE"
+        #     if self.__serial is not None:
+        #         try:
+        #             self.__serial.close()
+        #         except Exception:
+        #             pass
+        #         self.__serial = None
 
     def is_online(self):
         return self.stat.lower() == "online"

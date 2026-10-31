@@ -155,8 +155,8 @@ class DeviceApp(tk.Tk):
                 for d in devices:
                     if d.get_port() not in ports:
                         d.missing_polls += 1
-                        # 10 missed cycles * 200ms = 2.0 second grace period
-                        if d.missing_polls > 10:
+                        # 30 missed cycles * 200ms = 6.0 second grace period
+                        if d.missing_polls > 30:
                             print("[!] Deleting ", d.get_port())
                             d.cleanup()
                         else:
