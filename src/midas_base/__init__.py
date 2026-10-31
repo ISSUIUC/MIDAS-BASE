@@ -65,14 +65,16 @@ def get_all_devices():
 def run_standalone_worker(pipe_conn, ip, port, stage_sel, do_log):
     # Add real logic here
     # script_path = os.path.join(os.path.dirname(__file__), "gss_combiner", "standalone.py")
+    os.write(2, b"\n>>> WORKER PROCESS OS WRITE SUCCESS <<<\n")
+    print("trying things", flush=True)
     script_path = os.path.join(os.path.dirname(__file__), "gss_combiner", "standalone.py")
-    print(script_path)
-    print("Begin Subprocess:")
+    print(script_path, flush=True)
+    print("Begin Subprocess:", flush=True)
     log_t = "" if do_log else "--no-log"
     print(f"{sys.executable} {script_path} --ip {ip} --port {port} --{stage_sel} {log_t}")
 
     args = [
-        sys.executable, script_path,
+        sys.executable, "-u", script_path,
         "--ip", ip,
         "--port", port,
         f"--{stage_sel}"
@@ -711,6 +713,7 @@ class DeviceApp(tk.Tk):
         # input("Open Docker Desktop and then press enter ")
         print("Trying to start Ground Station Docker Container...")
         current_path = Path(__file__).resolve().parent / "gss_combiner" / "GroundStation" / "compose.yml"
+        print(current_path)
         with subprocess.Popen(["docker-compose", "-f", current_path.absolute(), "up", "--build"], stdout=subprocess.PIPE, text=True, bufsize=1, stderr=subprocess.STDOUT) as proc:
             opened_browser = False
             for line in proc.stdout:
@@ -765,8 +768,19 @@ class DeviceApp(tk.Tk):
             target_device.meta = f"{self.stage_sel.get().upper()} (LOG: {log_str})"
             target_device.stage_sel = self.stage_sel.get()
             target_device.pipe_conn, child_conn = multiprocessing.Pipe()
+            print("trying to run standalone")
             target_device.proc = multiprocessing.Process(target=run_standalone_worker, args=(child_conn, ip, self.selected_device, self.stage_sel.get(), should_log))
+            # run_standalone_worker(child_conn, ip, self.selected_device, self.stage_sel.get(), should_log)
+            print("trying to run standalone")
             target_device.proc.start()
+            time.sleep(0.5)
+
+            print("Is alive?:", target_device.proc.is_alive())
+            print("Exit code:", target_device.proc.exitcode)
+            # child_conn.close()
+            # target_device.proc.join()
+            print("started")
+
 
     def inspect_window(self):
         if self.selected_device:
@@ -1033,12 +1047,14 @@ class DeviceApp(tk.Tk):
         self.load_serial_no_feather()
 
 def main() -> None:
+    multiprocessing.freeze_support()
     app = DeviceApp()
     app.after(1000, app.update_devices)
     app.after(50, app.update_stdouts)
     # Add one more scheduled call right here, to kick off the console
     # stream loop that drains serial output for every connected device:
     app.mainloop()
+
 
 if __name__ == "__main__":
     main()

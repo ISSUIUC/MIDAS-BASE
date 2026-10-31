@@ -24,7 +24,7 @@ def read_stdin():
     for line in sys.stdin:
         stdin_q.put(line)
 
-threading.Thread(target=read_stdin, daemon=True).start()
+# threading.Thread(target=read_stdin, daemon=True).start()  # Moved to TelemetryStandalone.run()
 
 COMMANDS = {
     "PT": "pt",
@@ -166,6 +166,7 @@ class TelemetryStandalone():
 
         
     def run(self) -> None:
+        threading.Thread(target=read_stdin, daemon=True).start()
         print("Starting background systems...")
         self.__mqttclient.loop_start()
         print(f"REPORT_OK:{self.__uri}", flush=True)

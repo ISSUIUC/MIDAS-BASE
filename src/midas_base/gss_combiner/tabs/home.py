@@ -13,7 +13,6 @@ import json
 import datetime
 import threading
 import queue
-import midas_base.gss_combiner.standalone as standalone
 
 def _build_home_tab(self, parent, devices):
     
