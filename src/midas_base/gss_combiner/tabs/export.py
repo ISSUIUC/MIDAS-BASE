@@ -16,12 +16,41 @@ import sys
 import queue
 
 def _build_export_tab(self, parent):
-    self.export_frame = ttk.Frame(parent)
-    self.export_frame.pack()
+    content = ttk.Frame(parent)
+    content.pack(fill="both", expand=True, padx=22, pady=20)
 
-    ttk.Label(self.export_frame, text="Export to CSV", font=("Helvetica", 14)).pack()
-    self.no_input_file_label = ttk.Label(self.export_frame, text="Please upload a file in TELEM tab")
-    self.no_input_file_label.pack()
+    ttk.Label(content, text="DATA EXPORT", style="Title.TLabel").pack(anchor="w")
+    ttk.Label(
+        content,
+        text="Create a clean CSV from the telemetry data currently loaded in the analysis view.",
+        style="Muted.TLabel",
+    ).pack(anchor="w", pady=(4, 18))
 
-    self.export_file_button = ttk.Button(self.export_frame, text="Export to file", state="disabled", command=self.export_data)
-    self.export_file_button.pack()
+    self.export_frame = ttk.LabelFrame(content, text="CSV OUTPUT", padding=(24, 22))
+    self.export_frame.pack(fill="x", anchor="n")
+
+    ttk.Label(self.export_frame, text="01  /  SOURCE", style="Section.TLabel").pack(anchor="w")
+    self.no_input_file_label = ttk.Label(
+        self.export_frame,
+        text="Load a telemetry file from the TELEM tab to enable export.",
+        style="Muted.TLabel",
+        wraplength=560,
+    )
+    self.no_input_file_label.pack(anchor="w", pady=(7, 18))
+
+    ttk.Separator(self.export_frame, orient="horizontal").pack(fill="x", pady=(0, 18))
+    ttk.Label(self.export_frame, text="02  /  GENERATE FILE", style="Section.TLabel").pack(anchor="w")
+    ttk.Label(
+        self.export_frame,
+        text="Save the loaded telemetry data as a comma-separated values file.",
+        style="Muted.TLabel",
+        wraplength=560,
+    ).pack(anchor="w", pady=(7, 14))
+    self.export_file_button = ttk.Button(
+        self.export_frame,
+        text="EXPORT TELEMETRY TO CSV",
+        style="Accent.TButton",
+        state="disabled",
+        command=self.export_data,
+    )
+    self.export_file_button.pack(anchor="w")

@@ -17,6 +17,49 @@ import argparse
 
 import re
 # import util.logger
+import midas_base.gss_combiner.util.logger
+
+def safe_open_serial(ser):
+    """
+    Opens the serial port without triggering an ESP32-S3 reset.
+    Bypasses PySerial's default macOS/Linux behavior of clearing DTR before RTS.
+    """
+    if os.name == "nt":
+        # Windows handles DTR/RTS cleanly before opening
+        ser.dtr = False
+        ser.rts = False
+        ser.open()
+    else:
+        # macOS/Linux: Raise both lines, open, then clear RTS before DTR
+        ser.dtr = True
+        ser.rts = True
+        ser.open()
+        try:
+            ser.rts = False
+            ser.dtr = False
+        except OSError:
+            pass
+
+def safe_open_serial(ser):
+    """
+    Opens the serial port without triggering an ESP32-S3 reset.
+    Bypasses PySerial's default macOS/Linux behavior of clearing DTR before RTS.
+    """
+    if os.name == "nt":
+        # Windows handles DTR/RTS cleanly before opening
+        ser.dtr = False
+        ser.rts = False
+        ser.open()
+    else:
+        # macOS/Linux: Raise both lines, open, then clear RTS before DTR
+        ser.dtr = True
+        ser.rts = True
+        ser.open()
+        try:
+            ser.rts = False
+            ser.dtr = False
+        except OSError:
+            pass
 
 stdin_q = queue.Queue()
 
@@ -394,6 +437,45 @@ class TelemetryStandalone():
                 except Exception as e:
                     print("Exception while handling exception!")
 
+
+class Midas_Standalone():
+
+    def __init__(self, port, ip, stage, should_log):
+
+        self.__comport = serial.Serial()
+        self.__comport.port = port
+        self.__comport.baudrate = 9600
+        self.__comport.write_timeout = 1
+        self.__comport.timeout = 0.05
+        safe_open_serial(self.__comport)
+
+        self.__comport.reset_input_buffer()
+
+        print(f"MIDAS MINI connected on {port}")
+        print(f"REPORT_OK:{ip}", flush=True)
+
+    def run(self):
+        while True:
+            # Read from serial and print to stdout
+            if self.__comport.in_waiting:
+                try:
+                    line = self.__comport.readline().decode("ascii", errors="replace").strip()
+                    if line and "done" not in line:
+                        print(f"[F] {line}", flush=True)
+                except Exception as e:
+                    print(f"[MIDAS] Read error: {e}", flush=True)
+
+            # Handle stdin commands piped in from the GUI
+            if not stdin_q.empty():
+                cmd = stdin_q.get().strip()
+                if cmd:
+                    try:
+                        self.__comport.write((cmd + "\r\n").encode())
+                        print(f"[TO MIDAS] {cmd}", flush=True)
+                    except Exception as e:
+                        print(f"[MIDAS] Write error: {e}", flush=True)
+
+            time.sleep(0.01)
 
 def parse_params(arguments):
     print("parsing params")

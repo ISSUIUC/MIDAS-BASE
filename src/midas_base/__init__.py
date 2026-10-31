@@ -122,8 +122,10 @@ def run_standalone_worker(pipe_conn, ip, port, stage_sel, do_log):
 class DeviceApp(tk.Tk):
     def __init__(self):
         super().__init__()
-        self.title("Home")
-        self.geometry("800x550")
+        self._configure_theme()
+        self.title("MIDAS BASE | Ground Station")
+        self.geometry("1200x800")
+        self.minsize(1000, 680)
         self.selected_device = None
         self.windows = []
 
@@ -142,6 +144,194 @@ class DeviceApp(tk.Tk):
 
         self.create_widgets()
 
+    def _configure_theme(self):
+        self.theme_colors = {
+            "background": "#0B1118",
+            "surface": "#111B26",
+            "raised": "#172433",
+            "border": "#26394B",
+            "text": "#DCE7F2",
+            "muted": "#8FA3B8",
+            "accent": "#29C7D8",
+            "accent_hover": "#43D9E8",
+            "success": "#37D39A",
+            "error": "#FF718B",
+        }
+        colors = self.theme_colors
+        self.configure(background=colors["background"])
+
+        self.option_add("*Entry.background", colors["surface"])
+        self.option_add("*Entry.foreground", colors["text"])
+        self.option_add("*Entry.insertBackground", colors["accent"])
+        self.option_add("*Entry.selectBackground", colors["accent"])
+        self.option_add("*Entry.selectForeground", colors["background"])
+        self.option_add("*Text.background", colors["surface"])
+        self.option_add("*Text.foreground", colors["text"])
+        self.option_add("*Text.insertBackground", colors["accent"])
+        self.option_add("*Text.selectBackground", colors["accent"])
+        self.option_add("*Text.selectForeground", colors["background"])
+
+        style = ttk.Style(self)
+        style.theme_use("clam")
+        style.configure(".", background=colors["background"], foreground=colors["text"], font=("Segoe UI", 10))
+        style.configure("TFrame", background=colors["background"])
+        style.configure("TLabel", background=colors["background"], foreground=colors["text"])
+        style.configure(
+            "Title.TLabel",
+            background=colors["background"],
+            foreground=colors["accent"],
+            font=("Consolas", 16, "bold"),
+        )
+        style.configure(
+            "Section.TLabel",
+            background=colors["background"],
+            foreground=colors["accent"],
+            font=("Consolas", 10, "bold"),
+        )
+        style.configure(
+            "Muted.TLabel",
+            background=colors["background"],
+            foreground=colors["muted"],
+        )
+        style.configure(
+            "Success.TLabel",
+            background=colors["background"],
+            foreground=colors["success"],
+            font=("Consolas", 9, "bold"),
+        )
+        style.configure(
+            "TNotebook",
+            background=colors["background"],
+            borderwidth=0,
+            tabmargins=(4, 6, 4, 0),
+        )
+        style.configure(
+            "TNotebook.Tab",
+            background=colors["raised"],
+            foreground=colors["muted"],
+            padding=(16, 10),
+            font=("Segoe UI", 9, "bold"),
+        )
+        style.map(
+            "TNotebook.Tab",
+            background=[("selected", colors["surface"])],
+            foreground=[("selected", colors["accent"])],
+        )
+        style.configure(
+            "TButton",
+            background=colors["raised"],
+            foreground=colors["text"],
+            bordercolor=colors["border"],
+            padding=(12, 8),
+            relief="flat",
+            font=("Consolas", 9, "bold"),
+        )
+        style.map(
+            "TButton",
+            background=[("disabled", colors["surface"]), ("pressed", colors["accent"]), ("active", colors["border"])],
+            foreground=[("disabled", colors["muted"]), ("pressed", colors["background"])],
+        )
+        style.configure(
+            "Accent.TButton",
+            background=colors["accent"],
+            foreground=colors["background"],
+            bordercolor=colors["accent"],
+            padding=(14, 10),
+            relief="flat",
+            font=("Consolas", 9, "bold"),
+        )
+        style.map(
+            "Accent.TButton",
+            background=[("disabled", colors["raised"]), ("pressed", colors["accent_hover"]), ("active", colors["accent_hover"])],
+            foreground=[("disabled", colors["muted"]), ("pressed", colors["background"])],
+        )
+        style.configure(
+            "TEntry",
+            fieldbackground=colors["surface"],
+            foreground=colors["text"],
+            insertcolor=colors["accent"],
+            bordercolor=colors["border"],
+            padding=6,
+        )
+        style.configure(
+            "TSpinbox",
+            fieldbackground=colors["surface"],
+            foreground=colors["text"],
+            arrowcolor=colors["accent"],
+            bordercolor=colors["border"],
+            padding=5,
+        )
+        style.configure(
+            "TCombobox",
+            fieldbackground=colors["surface"],
+            background=colors["raised"],
+            foreground=colors["text"],
+            arrowcolor=colors["accent"],
+            bordercolor=colors["border"],
+            padding=6,
+        )
+        style.map(
+            "TCombobox",
+            fieldbackground=[("readonly", colors["surface"])],
+            foreground=[("readonly", colors["text"])],
+            selectbackground=[("readonly", colors["surface"])],
+            selectforeground=[("readonly", colors["text"])],
+        )
+        style.configure("TCheckbutton", background=colors["background"], foreground=colors["text"], spacing=8)
+        style.map("TCheckbutton", foreground=[("disabled", colors["muted"]), ("active", colors["accent"])])
+        style.configure("TRadiobutton", background=colors["background"], foreground=colors["text"], spacing=8)
+        style.map("TRadiobutton", foreground=[("disabled", colors["muted"]), ("active", colors["accent"])])
+        style.configure(
+            "TLabelframe",
+            background=colors["background"],
+            bordercolor=colors["border"],
+            relief="solid",
+        )
+        style.configure(
+            "TLabelframe.Label",
+            background=colors["background"],
+            foreground=colors["accent"],
+            font=("Consolas", 9, "bold"),
+        )
+        style.configure("TSeparator", background=colors["border"])
+        style.configure(
+            "Treeview",
+            background=colors["surface"],
+            fieldbackground=colors["surface"],
+            foreground=colors["text"],
+            bordercolor=colors["border"],
+            rowheight=32,
+            font=("Segoe UI", 9),
+        )
+        style.configure(
+            "Treeview.Heading",
+            background=colors["raised"],
+            foreground=colors["accent"],
+            bordercolor=colors["border"],
+            relief="flat",
+            padding=(8, 8),
+            font=("Consolas", 9, "bold"),
+        )
+        style.map(
+            "Treeview",
+            background=[("selected", "#174653")],
+            foreground=[("selected", colors["text"])],
+        )
+        style.configure(
+            "Vertical.TScrollbar",
+            background=colors["raised"],
+            troughcolor=colors["surface"],
+            bordercolor=colors["surface"],
+            arrowcolor=colors["muted"],
+        )
+        style.configure(
+            "Horizontal.TScrollbar",
+            background=colors["raised"],
+            troughcolor=colors["surface"],
+            bordercolor=colors["surface"],
+            arrowcolor=colors["muted"],
+        )
+
     def update_devices(self):
             global devices
             try:
@@ -155,8 +345,8 @@ class DeviceApp(tk.Tk):
                 for d in devices:
                     if d.get_port() not in ports:
                         d.missing_polls += 1
-                        # 10 missed cycles * 200ms = 2.0 second grace period
-                        if d.missing_polls > 10:
+                        # 30 missed cycles * 200ms = 6.0 second grace period
+                        if d.missing_polls > 30:
                             print("[!] Deleting ", d.get_port())
                             d.cleanup()
                         else:
@@ -374,12 +564,14 @@ class DeviceApp(tk.Tk):
                     self.connect_btn.configure(text="Connect")
 
         # Update stats
-        self.total_label.configure(text=f"Total Devices: {len(devices)}")
+        self.total_label.configure(text=f"DETECTED  //  {len(devices)}")
         online_count = sum(1 for d in devices if d.to_dict()["status"].lower() == "online")
-        self.online_label.configure(text=f"Online: {online_count}")
+        self.online_label.configure(text=f"ONLINE  //  {online_count}")
 
     def create_password_box(self):
         root = tk.Tk()
+        root.configure(background=self.theme_colors["background"])
+        root.title("MIDAS BASE | Access")
        
         # Create the StringVar tracker
         user_password = tk.StringVar()
@@ -407,8 +599,8 @@ class DeviceApp(tk.Tk):
 
         self.notebook.add(home_tab, text="HOME")
         self.notebook.add(config_tab, text="CONFIG")
-        self.notebook.add(test_tab, text="EJECTION_TEST")
-        self.notebook.add(connect_tab, text="CONNECT ")
+        self.notebook.add(test_tab, text="EJECTION TEST")
+        self.notebook.add(connect_tab, text="CONNECT")
         self.notebook.add(telem_tab, text="TELEM")
         self.notebook.add(export_tab, text="EXPORT")
         self.notebook.add(consoles_tab, text="CONSOLE")
@@ -902,6 +1094,7 @@ class DeviceApp(tk.Tk):
         term_win = tk.Toplevel(self)
         term_win.title("Network console: " + device)
         term_win.geometry("500x300")
+        term_win.configure(background=self.theme_colors["background"])
 
         self.windows.append((device, term_win))
 
@@ -915,7 +1108,17 @@ class DeviceApp(tk.Tk):
         scrollbar = ttk.Scrollbar(output_frame)
         scrollbar.pack(side="right", fill="y")
 
-        output = tk.Text(output_frame, wrap="word", bg="black", fg="white", insertbackground="lime")
+        output = tk.Text(
+            output_frame,
+            wrap="word",
+            bg=self.theme_colors["surface"],
+            fg=self.theme_colors["text"],
+            insertbackground=self.theme_colors["accent"],
+            font=("Consolas", 10),
+            relief="flat",
+            padx=10,
+            pady=8,
+        )
         target_device.set_terminal_output(output)
         output.pack(fill="both", expand=True)
         output.insert("end", "<BEGINNING OF INPUT STREAM>\n")
@@ -933,11 +1136,19 @@ class DeviceApp(tk.Tk):
         input_frame.pack(fill="x", padx=5, pady=5)
 
         input_var = tk.StringVar()
-        input_entry = tk.Entry(input_frame, textvariable=input_var, bg="black", fg="white", insertbackground="white")
+        input_entry = tk.Entry(
+            input_frame,
+            textvariable=input_var,
+            bg=self.theme_colors["surface"],
+            fg=self.theme_colors["text"],
+            insertbackground=self.theme_colors["accent"],
+            font=("Consolas", 10),
+            relief="flat",
+        )
         input_entry.pack(side="left", fill="x", expand=True)
 
-        output.tag_configure("user_in", foreground="green2")
-        output.tag_configure("raw_out", foreground="SkyBlue1")
+        output.tag_configure("user_in", foreground=self.theme_colors["success"])
+        output.tag_configure("raw_out", foreground=self.theme_colors["accent"])
 
         def send_command(event=None):
             command = input_var.get().strip()
