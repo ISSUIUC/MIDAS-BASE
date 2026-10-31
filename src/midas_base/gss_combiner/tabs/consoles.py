@@ -7,18 +7,28 @@ class DeviceConsoleFrame(ttk.Frame):
         super().__init__(parent)
         self.device = device
         self.port_name = device.get_port()
+        colors = getattr(parent.winfo_toplevel(), "theme_colors", {})
+        surface = colors.get("surface", "#111B26")
+        text_color = colors.get("text", "#DCE7F2")
+        accent = colors.get("accent", "#29C7D8")
+        success = colors.get("success", "#37D39A")
 
         # ── Output Area (Text Widget) ──
         self.output_text = tk.Text(
             self, state="disabled", wrap="word",
-            bg="#000000", fg="#ffffff", font=("Courier", 10),
-            insertbackground="lime"
+            bg=surface,
+            fg=text_color,
+            font=("Consolas", 10),
+            insertbackground=accent,
+            relief="flat",
+            padx=10,
+            pady=8,
         )
         self.output_text.pack(fill="both", expand=True, padx=5, pady=5)
         
         # Configure the specific color tags requested by the lead
-        self.output_text.tag_config("user_in", foreground="#00FF00") # Bright green
-        self.output_text.tag_config("raw_out", foreground="light sky blue")
+        self.output_text.tag_config("user_in", foreground=success)
+        self.output_text.tag_config("raw_out", foreground=accent)
 
         # Scrollbar for output
         scrollbar = ttk.Scrollbar(self.output_text, command=self.output_text.yview)
@@ -246,4 +256,3 @@ def _build_consoles_tab(self, parent, get_devices_callback):
 
     update_dropdown()
     return container
-

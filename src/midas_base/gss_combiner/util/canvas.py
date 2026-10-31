@@ -13,10 +13,20 @@ class Canvas:
         # Canvas.id += 1
         self.fig = plt.figure(self.fig_id)
     def plot(self, plt):
-        plt.plot(self.xdata, self.ydata)
+        self.fig.patch.set_facecolor("#0B1118")
+        axes = self.fig.gca()
+        axes.set_facecolor("#111B26")
+        axes.plot(self.xdata, self.ydata, color="#29C7D8", linewidth=1.8)
         plt.xlabel(self.xlabel)
         plt.ylabel(self.ylabel)
         plt.title(self.title)
+        axes.tick_params(colors="#8FA3B8")
+        axes.xaxis.label.set_color("#DCE7F2")
+        axes.yaxis.label.set_color("#DCE7F2")
+        axes.title.set_color("#29C7D8")
+        axes.grid(color="#26394B", linewidth=0.7, alpha=0.75)
+        for spine in axes.spines.values():
+            spine.set_color("#26394B")
         dpi = self.parent.winfo_fpixels('1i')
         self.canvas = FigureCanvasTkAgg(self.fig, master=self.parent)
         self.plot_widget = self.canvas.get_tk_widget()
