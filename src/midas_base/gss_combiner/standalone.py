@@ -78,10 +78,10 @@ COMMANDS = {
     "CAMOFF": "cam {serial} off",
     "RESET_KF": "kfr {serial}",
     "VMUXT": "cam {serial} toggle",
-    "PA": "fire {serial} a",
-    "PB": "fire {serial} b",
-    "PC": "fire {serial} c",
-    "PD": "fire {serial} d"
+    "PA": "fire {serial} A",
+    "PB": "fire {serial} B",
+    "PC": "fire {serial} C",
+    "PD": "fire {serial} D"
 }
 SUSTAINER_SERIAL = 7
 BOOSTER_SERIAL = 10
