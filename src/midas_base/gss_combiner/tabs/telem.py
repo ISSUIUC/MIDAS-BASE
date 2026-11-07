@@ -28,7 +28,6 @@ def _build_telem_tab(self, parent, name):
         style="Muted.TLabel",
     ).pack(anchor="w", pady=(4, 16))
 
-    # --- SEZIONE DATA SOURCE (File + Caselle Start/End) ---
     controls = ttk.LabelFrame(content, text="DATA SOURCE", padding=(14, 12))
     controls.pack(fill="x", pady=(0, 14))
 
@@ -40,7 +39,6 @@ def _build_telem_tab(self, parent, name):
         command=self.open_input_file,
     ).grid(row=1, column=0, sticky="w", pady=(7, 0))
 
-    # Casella START FRAME
     ttk.Label(controls, text="START FRAME", style="Section.TLabel").grid(
         row=0, column=1, sticky="w", padx=(28, 0)
     )
@@ -55,7 +53,6 @@ def _build_telem_tab(self, parent, name):
     self.input_start_frame.set(0)
     self.input_start_frame.grid(row=1, column=1, sticky="w", padx=(28, 0), pady=(7, 0))
 
-    # Casella END FRAME (Aggiunta per il punto di fine)
     ttk.Label(controls, text="END FRAME", style="Section.TLabel").grid(
         row=0, column=2, sticky="w", padx=(28, 0)
     )
@@ -70,11 +67,9 @@ def _build_telem_tab(self, parent, name):
     self.input_end_frame.set(100)
     self.input_end_frame.grid(row=1, column=2, sticky="w", padx=(28, 0), pady=(7, 0))
 
-    # Collega il tasto Invio alla casella di inizio
     self.input_start_frame.bind("<Return>", self.Sync_boxes_to_sliders)
     self.input_start_frame.configure(command=self.Sync_boxes_to_sliders)
 
-    # Etichetta e casella per END FRAME (colonna 2)
     ttk.Label(controls, text="END FRAME", style="Section.TLabel").grid(
         row=0, column=2, sticky="w", padx=(28, 0)
     )
@@ -91,7 +86,6 @@ def _build_telem_tab(self, parent, name):
 
     controls.columnconfigure(3, weight=1)
 
-    # --- SEZIONE SIGNAL VIEW (prima creiamo plot_panel, poi ci mettiamo gli oggetti) ---
     plot_panel = ttk.LabelFrame(content, text="SIGNAL VIEW", padding=(14, 12))
     plot_panel.pack(fill="both", expand=True)
 
@@ -107,7 +101,6 @@ def _build_telem_tab(self, parent, name):
     )
     self.input_file_thing.pack(side="right", padx=(12, 0))
 
-    # Creiamo gli slider dentro plot_panel (DOPO che plot_panel esiste)
     self.start_label = ttk.Label(plot_panel, text="Start Value", font=("Helvetica", 14))
     self.start_label.pack()
     self.super_slider = ttk.LabeledScale(plot_panel, from_=0, to=100)
@@ -121,7 +114,6 @@ def _build_telem_tab(self, parent, name):
     self.infra_slider.scale.configure(command=self.range_change)
     self.super_slider.scale.configure(command=self.range_change)
 
-    # Creiamo telem_frame PRIMA di metterci dentro telem_dropdown
     self.telem_frame = ttk.Frame(plot_panel)
     self.telem_frame.pack(fill="both", expand=True)
 
