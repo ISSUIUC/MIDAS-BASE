@@ -1005,9 +1005,14 @@ class DeviceApp(tk.Tk):
             self.data = data
             # Get the value from each data point
             self.update_export_frame()
-            self.input_start_frame.configure(to=len(self.data))
-            self.super_slider.config(to=len(self.data))
-            self.infra_slider.configure(to=len(self.data))
+            max_val = len(self.data)
+            self.input_start_frame.configure(to=max_val)
+            self.input_end_frame.configure(to=max_val)
+            self.super_slider.scale.configure(to=max_val)
+            self.infra_slider.scale.configure(to=max_val)
+            self.input_start_frame.set(0)
+            self.input_end_frame.set(max_val)
+            self.infra_slider.value = max_val
 
         elif self.input_file.endswith(".telem"):
             with open(self.input_file, "r") as f:
@@ -1029,6 +1034,12 @@ class DeviceApp(tk.Tk):
             
             self.super_slider.scale.config(to=max(times))
             self.infra_slider.scale.configure(to=max(times))
+            max_t = int(max(times))
+            self.input_start_frame.configure(to=max_t)
+            self.input_end_frame.configure(to=max_t)
+            self.input_start_frame.set(0)
+            self.input_end_frame.set(max_t)
+            self.infra_slider.value = max_t
             self.update_export_frame()
         else:
             print("Invalid file. Please try again.")
@@ -1055,13 +1066,23 @@ class DeviceApp(tk.Tk):
 
         self.telem_frame.update_idletasks()
     
+    def Sync_boxes_to_sliders(self, _=None):
+        try:
+            self.super_slider.value = int(float(self.input_start_frame.get()))
+            self.infra_slider.value = int(float(self.input_end_frame.get()))
+        except ValueError:
+            return
+        self.range_change()
   
-    def range_change(self, _):
+    def range_change(self, _=None):
+        if not hasattr(self, "data") or not self.data:
+            return
         new_val = self.telem_dropdown.get()
         print(f"the new val is {new_val}")
         start_range = self.super_slider.value
         end_range = self.infra_slider.value
-        
+        self.input_start_frame.set(int(start_range))
+        self.input_end_frame.set(int(end_range))
         data_key = REVERSE_TELEM_DATA_KEYS.get(new_val)
         if data_key is None:
             return
